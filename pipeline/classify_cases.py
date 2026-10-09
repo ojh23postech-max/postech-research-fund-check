@@ -74,6 +74,14 @@ def verdict(answer, kind):
     return (whole[0], "본문 기준") if len(whole) == 1 else ("판단필요", "답변 해석 필요")
 
 
+def cut(t, n=3000):
+    """긴 답변은 n자 안의 마지막 문장 끝에서 자르고 원문 안내를 붙임"""
+    if len(t) <= n:
+        return t
+    m = max(t.rfind(e, 0, n) for e in ("다.", "음.", "함.", "임.", "됨.", "\n"))
+    return t[:m + 2 if m > n // 2 else n].rstrip() + "\n… (이하 생략, 원문 PDF 참고)"
+
+
 def bimok(text):
     for name, pat in BIMOK:
         if re.search(pat, text):
@@ -121,9 +129,9 @@ def split_qa(body):
 
 def extract():
     out, seen = [], set()
-    for f in sorted(TEXT.glob("*.json")):
-        pages = json.loads(f.read_text(encoding="utf-8"))
-        name = doc_name(f.stem)
+    from extract import load_pages  # PDF 줄바꿈 복원본
+    for stem, pages in load_pages().items():
+        name = doc_name(stem)
         for kind, raw, body, page in blocks(pages):
             if re.search(r"[·･･…]{5,}", raw[:300]):  # 목차 줄
                 continue
@@ -145,7 +153,7 @@ def extract():
             v, why = verdict(a, kind)
             out.append({
                 "id": key, "출처구분": "참고자료", "출처": name, "쪽": page, "유형": kind,
-                "제목": q[:160], "질의": q, "답변": a[:1500],
+                "제목": q[:160], "질의": q, "답변": cut(a),
                 "비목": bimok(q + " " + a[:300]), "판정": v, "판정근거": why,
             })
     return out

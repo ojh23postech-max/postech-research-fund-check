@@ -22,7 +22,8 @@ def grams(s):
 
 
 def load_text():
-    return {doc_name(f.stem): json.loads(f.read_text(encoding="utf-8")) for f in TEXT.glob("*.json")}
+    from extract import load_pages  # PDF 줄바꿈 복원본
+    return {doc_name(k): v for k, v in load_pages().items()}
 
 
 def excerpt(pages, page, hint, find=None):

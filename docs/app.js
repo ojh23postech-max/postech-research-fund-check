@@ -97,7 +97,7 @@ function setRule(r) {
 }
 
 function fields() {
-  const n = (id) => ($(id).value === "" ? null : Number($(id).value));
+  const n = (id) => { const v = $(id).value.replace(/,/g, ""); return v === "" ? null : Number(v); };
   const m = $("#track").value, f = { ministry: m, track: trackOf(m), amount: n("#amount"), people: n("#people") };
   f.perPerson = f.amount != null && f.people ? f.amount / f.people : null;
   const s = dateOf("#spend"), e = dateOf("#end");
@@ -208,14 +208,14 @@ function drawCards() {
   const list = filter ? matched.filter((c) => c.판정 === filter) : matched;
   const box = $("#cards");
   // 화면 높이에 맞춰 한 쪽 카드 수 계산 (스크롤 없이)
-  box.innerHTML = list.length ? `<li><button class="probe"><span class="line">${tag("인정")}</span><span class="t">가<br>가</span><span class="w">가</span></button></li>` : "";
+  box.innerHTML = list.length ? `<li><button class="probe"><span class="line">${tag("인정")}</span><span class="t">가<br>가<br>가</span><span class="w">가</span></button></li>` : "";
   const h = box.firstElementChild?.offsetHeight || 88;
   const per = Math.max(2, Math.floor((box.clientHeight + 7) / (h + 7)));
   const pages = Math.max(1, Math.ceil(list.length / per));
   page = Math.min(page, pages - 1);
   box.innerHTML = list.length ? list.slice(page * per, page * per + per).map((c) => `<li><button type="button" data-id="${c.id}">
       <span class="line">${tag(c.판정)}<span class="src-tag">${esc(c.출처구분 === "참고자료" ? c.출처.replace(/\(.*\)/, "") : c.출처구분)}</span><span class="w">${c.원문URL ? "" : `PDF ${c.쪽}쪽`}</span></span>
-      <span class="t">${esc(c.제목)}</span><span class="w">${esc(c.비목)} · ${esc(c.판정근거)}</span></button></li>`).join("")
+      <span class="t" title="${esc(c.제목)}">${esc(c.제목)}</span><span class="w">${esc(c.비목)} · ${esc(c.판정근거)}</span></button></li>`).join("")
     : `<li class="nothing">${rule ? "조건에 맞는 사례가 없습니다." : "항목을 입력하면 참고자료·게시판의 관련 사례가 나옵니다."}</li>`;
   $("#pageInfo").textContent = `${list.length ? page + 1 : 0} / ${list.length ? pages : 0}`;
   $("#prev").disabled = page === 0; $("#next").disabled = page >= pages - 1;
@@ -292,6 +292,10 @@ function tab(name) {
 // 이벤트
 $("#form").addEventListener("input", (e) => {
   if (e.target.classList.contains("date")) maskDate(e.target);
+  if (e.target.id === "amount") { // 숫자만 남기고 천 단위 콤마
+    const d = e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    e.target.value = d ? Number(d).toLocaleString("ko-KR") : "";
+  }
   if (e.target.id === "item") return pick();
   run();
 });

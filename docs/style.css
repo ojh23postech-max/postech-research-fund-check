@@ -136,7 +136,7 @@ legend { font-size: .82rem; font-weight: 600; color: var(--ink-2); padding: 0; m
 .cards li > button { width: 100%; text-align: left; border: 1px solid var(--rule); background: #fff; border-radius: 8px; padding: .55rem .7rem; display: grid; gap: .2rem; }
 .cards li > button:hover { border-color: var(--ink-2); }
 .cards .line { display: flex; gap: .35rem; align-items: center; flex-wrap: wrap; }
-.cards .t { font-weight: 600; font-size: .9rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cards .t { font-weight: 600; font-size: .9rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .cards .w { font-size: .8rem; color: var(--ink-2); }
 .cards .nothing { color: var(--ink-2); font-size: .9rem; padding: 1rem 0; }
 .pager { display: flex; justify-content: center; align-items: center; gap: .8rem; padding-top: .5rem; font-size: .85rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
