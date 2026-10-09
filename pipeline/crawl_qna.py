@@ -61,10 +61,12 @@ def detail(board, x):
     if board == "IRIS FAQ":  # FAQ는 운영단 안내문 자체가 답변(숨은 input에 이스케이프된 HTML)
         m = re.search(r"name=\"blltCn\" value='(.*?)'/>", t, re.S)
         return "", (scrub(html.unescape(m.group(1))) if m else ""), "", ""
-    return (scrub(q.group(1)) if q else ""), scrub("\n".join(a)), (d.group(1) if d else ""), (field.group(1).strip() if field else "")
+    org = re.search(r"소관 전문기관</strong>\s*<span>([^<]*)", t)  # 부처별 사례 구분에 사용
+    return (scrub(q.group(1)) if q else ""), scrub("\n".join(a)), (d.group(1) if d else ""), (field.group(1).strip() if field else "") + "|" + (org.group(1).strip() if org else "")
 
 
 def to_case(board, x, q, a, date, field):
+    field, _, org = field.partition("|")
     title = html.unescape(x["blltTl"]).strip()
     v, why = verdict(a, "Q&A")
     return {
@@ -73,7 +75,7 @@ def to_case(board, x, q, a, date, field):
         "판정": v, "판정근거": why, "작성일": x.get("frstRegYmd", ""),
         **({"유형": "FAQ"} if board == "IRIS FAQ" else {}), "답변일": date,
         "원문URL": (f"{BASE}/contents/retrieveFaqView.do?blbdId={x['blbdId']}&blltSeq={x['blltSeq']}&prgmId=" if board == "IRIS FAQ" else BASE + BOARDS[board][0]),
-        "게시번호": x["blltSeq"],
+        "게시번호": x["blltSeq"], "전문기관": org,
     }
 
 

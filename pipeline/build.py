@@ -67,7 +67,7 @@ def article_cases(texts):
                 "id": "art-" + hashlib.md5((name + no).encode()).hexdigest()[:8], "출처구분": "참고자료", "출처": name, "쪽": page,
                 "유형": "규정조항", "제목": f"{no}({title})", "질의": f"{name} {no}({title})",
                 "답변": re.sub(r"\s*\n\s*", " ", body)[:900], "비목": bimok(title + " " + body[:300]),
-                "판정": v, "판정근거": why,
+                "판정": v, "판정근거": why, "부처": ["산업통상부"] if "산업기술혁신사업" in name else ["공통"],
             })
     return out
 
@@ -114,7 +114,8 @@ if __name__ == "__main__":
     texts = load_text()
     rules = json.loads((DATA / "rules.json").read_text(encoding="utf-8"))
     cases = json.loads((DATA / "cases.json").read_text(encoding="utf-8"))
-    cases = [c for c in cases if c["유형"] != "규정조항"] + article_cases(texts)
+    # IRIS 연구수행문의는 상세 화면에서 '공개'를 확인하며 전문기관을 기록한 글만 게시(목록 코드만으로는 비공개글이 섞일 수 있음)
+    cases = [c for c in cases if c["유형"] != "규정조항" and (c["출처"] != "IRIS 연구수행문의" or c.get("전문기관"))] + article_cases(texts)
     for r in rules["rules"]:
         for c in [r["base"]] + r["checks"] + r["agree"]:
             for g in c["근거"]:
@@ -152,7 +153,7 @@ if __name__ == "__main__":
     docs = sorted({c["출처"] for c in cases} | set(texts))
     meta = {"기준일": date.today().isoformat(), "문서": docs,
             "사례수": len(cases), "게시판수": sum(c["출처구분"] != "참고자료" for c in cases)}
-    slim = [{k: c[k] for k in ("id", "출처구분", "출처", "쪽", "유형", "제목", "답변", "비목", "판정", "판정근거")} | ({"원문URL": c["원문URL"]} if c.get("원문URL") else {}) | ({"자동": 1} if c.get("자동") else {}) for c in cases]
+    slim = [{k: c[k] for k in ("id", "출처구분", "출처", "쪽", "유형", "제목", "답변", "비목", "판정", "판정근거")} | {"부처": c.get("부처", ["공통"])} | ({"원문URL": c["원문URL"]} if c.get("원문URL") else {}) | ({"자동": 1} if c.get("자동") else {}) for c in cases]
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps({"meta": meta, "tracks": rules["tracks"], "ministries": ministries, "rules": rules["rules"], "cases": slim}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     from collections import Counter

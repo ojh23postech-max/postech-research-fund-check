@@ -12,6 +12,8 @@ OVERRIDES = ROOT / "data" / "case_overrides.json"
 
 # 문서 파일명 일부 → 화면 표시명
 DOCS = {
+    "KEITI_환경기술": "KEITI 환경기술개발사업 연구개발비 Q&A 사례집(2025.12)",
+    "농기평_2024": "농기평 연구비 FAQ 자료집(2024 하반기)",
     "QA사례집": "NRF 정부연구비 사용 Q&A 사례집(2026)",
     "국가연구개발혁신법 매뉴얼": "국가연구개발혁신법 매뉴얼(2026.7)",
     "학생인건비통합관리": "학생인건비 통합관리 매뉴얼(2026.7)",
@@ -74,6 +76,40 @@ def verdict(answer, kind):
     return (whole[0], "본문 기준") if len(whole) == 1 else ("판단필요", "답변 해석 필요")
 
 
+# 사례가 어느 부처 과제에 해당하는지: 전문기관 이름 → 소관 부처 (2026 정부조직 기준)
+ORG = [
+    (r"한국연구재단|NRF", ["과학기술정보통신부", "교육부"]), (r"정보통신기획평가원|IITP", ["과학기술정보통신부"]),
+    (r"산업기술기획평가원|KEIT|산업기술진흥원|KIAT|디자인진흥원|산업통상", ["산업통상부"]),
+    (r"에너지기술평가원|KETEP|환경산업기술원|KEITI|기후에너지환경", ["기후에너지환경부"]),
+    (r"중소기업기술정보진흥원|TIPA|중소벤처", ["중소벤처기업부"]), (r"보건산업진흥원|KHIDI|보건복지|의료기기연구개발사업단", ["보건복지부"]),
+    (r"국토교통과학기술진흥원|KAIA|국토교통", ["국토교통부"]), (r"해양수산과학기술진흥원|KIMST|해양수산", ["해양수산부"]),
+    (r"농림식품기술기획평가원|IPET|농림축산식품", ["농림축산식품부"]), (r"농촌진흥청", ["농촌진흥청"]),
+    (r"기상산업기술원|기상청", ["기상청"]), (r"콘텐츠진흥원|문화체육관광", ["문화체육관광부"]), (r"국방기술|방위사업", ["방위사업청"]),
+    (r"식품의약품", ["식품의약품안전처"]), (r"원자력안전", ["원자력안전위원회"]), (r"재난안전|행정안전", ["행정안전부"]),
+    (r"임업진흥원|산림", ["산림청"]), (r"우주항공", ["우주항공청"]), (r"질병관리", ["질병관리청"]), (r"과학기술정보통신|과기정통", ["과학기술정보통신부"]),
+]
+
+
+def ministries(c):
+    """공통(혁신법 매뉴얼 등) 또는 해당 부처 목록"""
+    src = c["출처"]
+    if c.get("출처구분") == "전문기관":
+        return c["부처"]  # 수집 소스별로 지정
+    if src.startswith("KEITI"):
+        return ["기후에너지환경부"]
+    if src.startswith("농기평"):
+        return ["농림축산식품부"]
+    if src.startswith("NRF") or c.get("출처구분") == "NRF":
+        return ["과학기술정보통신부", "교육부"]  # 한국연구재단 사례 → 과기정통부·교육부 과제에만
+    if "산업기술혁신사업" in src:
+        return ["산업통상부"]
+    org = c.get("전문기관") or ""
+    for pat, ms in ORG:
+        if org and re.search(pat, org):
+            return ms
+    return ["미상"] if c.get("출처") == "IRIS 연구수행문의" else ["공통"]
+
+
 def cut(t, n=3000):
     """긴 답변은 n자 안의 마지막 문장 끝에서 자르고 원문 안내를 붙임"""
     if len(t) <= n:
@@ -93,10 +129,21 @@ def clean(s):
     s = re.sub(r"[·･･…]{3,}\s*\d*", "", s)
     s = re.sub(r"(?m)^\s*[/\\]?\d{1,3}[/\\]?\s*$", "", s)  # 쪽번호 줄
     s = re.sub(r"(?m)^(정부연구비 사용 Q&A 사례집|정부연구개발비 집행관리 Q&A|국가연구개발사업 제재처분 가이드라인)\s*$", "", s)
+    s = re.sub(r"\d{0,3}\s*2024년 하반기 과제신청부터 정산까지 연구비 관련 FAQ 자료집|[ⅠⅡⅢⅣI]{1,4}\.?\s*[가-힣 ]{2,20}주요질의(?:\s*\d+\b)?", "", s)  # 농기평 머리글
+    s = re.sub(r"한국환경산업기술원|환경기술개발사업 연구개발비 관리 및 Q&A 사례집|1\. 일반사항 2\. 비목별 연구개발비 계상·사용기준 및 Q&A", "", s)  # KEITI 머리글
+    s = re.split(r"\s*\d{0,3}\s*(?:\n[^\n]{0,20})?불인정 사례\s+불인정 사(?:례|유)", s)[0]  # KEITI: 뒤따르는 '불인정 사례' 표는 답변이 아님
     return re.sub(r"\n{2,}", "\n", s).strip()
 
 
-Q_HEAD = re.compile(r"(?m)^\s*Q\s?\d{0,3}\s?[\.\):]\s*")
+def dropcap(s):
+    """농기평 자료집: 문단 첫 글자가 장식 글자라 '연 구비'처럼 한 칸 벌어져 추출됨 → 붙임"""
+    s = re.sub(r"[ \t]+Q[ \t]+(?=[가-힣「‘“])", "\nQ ", s)  # 줄 가운데서 시작하는 다음 질문
+    return re.sub(r"(?m)^(\s*(?:[QA]\s+)?)([가-힣]) (?=[가-힣])", r"\1\2", s)
+
+
+Q_HEAD = re.compile(r"(?m)^\s*Q(?:\s?\d{0,3}\s?[\.\):]|\s+(?=[가-힣]))\s*")  # "Q1." "Q." "Q 질문"
+# 'Q' 표시 없이 물음표로 끝나는 줄이 질문인 문서(KEITI 사례집)
+QLINE_HEAD = re.compile(r"(?m)^(?![-▷※*·•\d\[(<])(?=[^\n]{6,160}\?\s*$)")
 EX_HEAD = re.compile(r"(?m)^\s*(\(관련판례\d*\)|\[유형의 예시\]|\((?:[^()\n]{0,40})예시\)|<예시>|【예시】)")
 
 
@@ -104,14 +151,14 @@ def doc_name(stem):
     return next((v for k, v in DOCS.items() if k in stem), stem)
 
 
-def blocks(pages):
+def blocks(pages, qline=False):
     """페이지 경계를 넘는 Q&A도 잡기 위해 전체를 이어붙이고 오프셋→쪽 매핑"""
     text, starts = "", []
     for p in pages:
         starts.append((len(text), p["page"]))
         text += p["text"] + "\n"
     page_at = lambda i: max((pg for s, pg in starts if s <= i), default=1)
-    heads = sorted([(m.start(), m.end(), "Q&A") for m in Q_HEAD.finditer(text)] +
+    heads = sorted([(m.start(), m.end(), "Q&A") for m in (QLINE_HEAD if qline else Q_HEAD).finditer(text)] +
                    [(m.start(), m.end(), "예시") for m in EX_HEAD.finditer(text)])
     for n, (s, e, kind) in enumerate(heads):
         end = heads[n + 1][0] if n + 1 < len(heads) else len(text)
@@ -119,10 +166,11 @@ def blocks(pages):
 
 
 def split_qa(body):
+    body = re.sub(r"\?\s+A\s+(?=[가-힣「‘“(])", "?\nA ", body)  # 같은 줄에 붙은 "…요? A 답변"
     lines = [l.strip() for l in body.split("\n") if l.strip()]
     # 답변 시작: "A." / "-" / "▶" / "⇒" 로 시작하는 첫 줄
     for i, l in enumerate(lines):
-        if i and re.match(r"^(A\s?[\.:]|[-▶⇒❍☞]|→)", l):
+        if i and re.match(r"^(A\s?[\.:]|A\s+(?=[가-힣])|[-▶⇒❍☞]|→)", l):
             return " ".join(lines[:i]), "\n".join(lines[i:])
     return lines[0] if lines else "", "\n".join(lines[1:])
 
@@ -132,13 +180,15 @@ def extract():
     from extract import load_pages  # PDF 줄바꿈 복원본
     for stem, pages in load_pages().items():
         name = doc_name(stem)
-        for kind, raw, body, page in blocks(pages):
+        if stem.startswith("농기평"):
+            pages = [{**p, "text": dropcap(p["text"])} for p in pages]
+        for kind, raw, body, page in blocks(pages, qline=stem.startswith("KEITI")):
             if re.search(r"[·･･…]{5,}", raw[:300]):  # 목차 줄
                 continue
             body = clean(body)
             if kind == "Q&A":
                 q, a = split_qa(body)
-                a = re.sub(r"^A\s?[\.:]\s*", "", a)
+                a = re.sub(r"^A(?:\s?[\.:]|\s+(?=[가-힣]))\s*", "", a)
             else:
                 lines = body.split("\n")
                 q, a = raw.strip().split("\n")[0][:60], "\n".join(lines[:10])
@@ -146,7 +196,7 @@ def extract():
             q, a = q.strip(), a.strip()
             if len(q) < 6 or len(a) < 15:
                 continue
-            key = hashlib.md5((name + q[:80]).encode()).hexdigest()[:10]
+            key = hashlib.md5((name + re.sub(r"\s", "", q)[:60]).encode()).hexdigest()[:10]  # 띄어쓰기 복원이 바뀌어도 id 유지
             if key in seen:
                 continue
             seen.add(key)
@@ -182,11 +232,21 @@ if __name__ == "__main__":
             c["자동"] = True  # 사람 검수 전(키워드 분류) 표시 — overrides로 검수하면 해제
             c["비목"] = bimok(c["제목"] + " " + c.get("질의", "")[:300])
             cases.append(c)
+    # 전문기관(IPET·SMTECH 등) Q&A·FAQ: 게시판과 같이 키워드 판정 후 '자동분류' 표시, 부처는 수집 소스 지정값
+    agency = ROOT / "data" / "agency_cases.json"
+    if agency.exists():
+        for c in json.loads(agency.read_text(encoding="utf-8")):
+            c["판정"], c["판정근거"] = verdict(c["답변"], "Q&A")
+            c["자동"] = True
+            c["비목"] = bimok(c["제목"] + " " + c.get("질의", "")[:300])
+            cases.append(c)
     if OVERRIDES.exists():  # case-curator 수정분이 최우선
         ov = json.loads(OVERRIDES.read_text(encoding="utf-8"))
         for c in cases:
             if c["id"] in ov:
                 c.update(ov[c["id"]]); c.pop("자동", None)
+    for c in cases:
+        c["부처"] = ministries(c)
     OUT.write_text(json.dumps(cases, ensure_ascii=False, indent=1), encoding="utf-8")
     from collections import Counter
     print(len(cases), "건", Counter(c["판정"] for c in cases), Counter(c["출처"] for c in cases).most_common())

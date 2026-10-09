@@ -9,9 +9,29 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC, OUT = ROOT / "참고자료", ROOT / "data" / "text"
 
 
+def gutter(pg):
+    """양면 펼침(가로로 긴 쪽)이면 두 쪽 사이 x좌표, 아니면 None. 가운데 영역에서 가로지르는 단어가 없는 세로선을 찾음.
+    세로 쪽의 표·곁단은 줄이 단을 넘나들어 나누면 문장이 잘리므로 대상에서 뺌"""
+    w = pg.extract_words()
+    if pg.width <= pg.height or len(w) < 60:
+        return None
+    hit = lambda x: sum(1 for a in w if a["x0"] < x + 4 and x - 4 < a["x1"])  # 8pt 폭 빈 띠를 가로지르는 단어 수
+    x = min(range(int(pg.width * .35), int(pg.width * .65), 2), key=lambda x: (hit(x), abs(x - pg.width / 2)))
+    cross = hit(x)
+    left = sum(1 for a in w if a["x1"] <= x)
+    return x if cross == 0 and 0.25 < left / len(w) < 0.75 else None
+
+
 def pdf_pages(p):
     with pdfplumber.open(p) as pdf:
-        return [{"page": i + 1, "text": pg.extract_text() or ""} for i, pg in enumerate(pdf.pages)]
+        out = []
+        for i, pg in enumerate(pdf.pages):
+            pg = pg.within_bbox(pg.bbox)  # 쪽 밖에 놓인 글자(인쇄 판면의 이웃 쪽 등) 제외
+            x = gutter(pg)
+            parts = [pg.crop((0, 0, x, pg.height)), pg.crop((x, 0, pg.width, pg.height))] if x else [pg]  # 왼쪽 단 → 오른쪽 단
+            t = "\n".join(c.extract_text() or "" for c in parts)
+            out.append({"page": i + 1, "text": t})
+        return out
 
 
 def hwp5_text(p):

@@ -193,6 +193,13 @@ function run() {
   renderCases(v);
 }
 
+// 사례 범위: 선택한 부처 과제에 해당하는 사례만 (NRF 사례집은 과기정통부·교육부, 산업부 운영요령은 산업부, 혁신법 매뉴얼 등은 국가R&D 공통)
+function caseFits(c) {
+  const m = $("#track").value;
+  if (m.startsWith("__")) return /^POSTECH/.test(c.출처); // 민간·교내과제: 학내 규정만
+  return c.부처.includes("공통") || c.부처.includes(m);
+}
+
 // 사례: 규칙 비목·키워드와 입력어로 관련도 계산
 function renderCases(v = lastV) {
   lastV = v;
@@ -201,7 +208,7 @@ function renderCases(v = lastV) {
   const g = grams(q + " " + (rule ? rule.keywords.join(" ") : ""));
   // 참고자료(공식 문서) 우선, 그 안에서 관련도 순
   const motie = trackOf($("#track").value) === "motie";
-  matched = q ? D.cases.filter((c) => !(motie && /NRF/.test(c.출처))).map((c) => {
+  matched = q ? D.cases.filter(caseFits).map((c) => {
     let s = 0; g.forEach((x) => c.g.has(x) && s++);
     if (rule && c.비목 === rule.비목) s += 4;
     if (motie && /산업기술혁신/.test(c.출처)) s += 4; // 산업부 과제는 공통 운영요령 우선
@@ -211,7 +218,7 @@ function renderCases(v = lastV) {
   const base = matched, cntOf = (l) => { const n = { 인정: 0, 불인정: 0, 판단필요: 0, 참고: 0 }; l.forEach((c) => n[c.판정]++); return n; };
   const terms = $("#caseQ").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length) {
-    const pool = base.length ? base : D.cases.filter((c) => !(motie && /NRF/.test(c.출처)));
+    const pool = base.length ? base : D.cases.filter(caseFits);
     matched = pool.filter((c) => { const t = (c.제목 + " " + c.답변 + " " + c.비목 + " " + c.출처).toLowerCase(); return terms.every((w) => t.includes(w)); });
     if (!base.length) matched.sort((a, b) => (a.판정 === "참고") - (b.판정 === "참고") || (b.출처구분 === "참고자료") - (a.출처구분 === "참고자료"));
   }
