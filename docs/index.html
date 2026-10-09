@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>연구비 집행 점검 | POSTECH</title>
+<meta name="description" content="국가R&D·산업부·POSTECH 규정으로 연구비 집행 적정성을 점검하고 관련 사례와 협약변경 필요 여부를 확인합니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>연구비 집행 점검</h1>
+  <p class="meta" id="meta">규정 불러오는 중</p>
+  <p class="notice">참고용 안내입니다. 최종 판단은 연구지원팀과 전문기관 기준을 따르세요.</p>
+</header>
+
+<main class="board">
+  <!-- 입력 -->
+  <form class="panel input" id="form" autocomplete="off">
+    <h2 class="sr">집행 정보 입력</h2>
+    <label class="field">과제 구분
+      <select id="track"></select>
+    </label>
+    <label class="field">집행 항목
+      <input id="item" list="items" placeholder="예: 회의비, 노트북, 해외출장" required>
+      <datalist id="items"></datalist>
+    </label>
+    <div class="row">
+      <label class="field">금액(원)<input id="amount" type="number" min="0" step="1000" inputmode="numeric"></label>
+      <label class="field">인원<input id="people" type="number" min="1" inputmode="numeric"></label>
+    </div>
+    <div class="row">
+      <label class="field">집행일<input id="spend" type="date"></label>
+      <label class="field">과제 종료일<input id="end" type="date"></label>
+    </div>
+    <fieldset class="qs" id="qs"><legend>해당하면 체크</legend></fieldset>
+    <fieldset class="agree">
+      <legend>협약변경(승인·통보) 상태</legend>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="ag" value="done">완료</label>
+        <label><input type="radio" name="ag" value="none" checked>안 함·진행 중</label>
+      </div>
+      <label class="field" id="agDateWrap" hidden>승인(통보)일<input id="agDate" type="date"></label>
+    </fieldset>
+  </form>
+
+  <!-- 판정 -->
+  <section class="panel result" aria-live="polite" id="result">
+    <div class="empty" id="empty">
+      <p class="lead">집행하려는 항목을 입력하세요.</p>
+      <p>국가연구개발혁신법 매뉴얼, NRF Q&amp;A 사례집, 산업부 공통 운영요령, POSTECH 연구비관리지침·여비규정 등 14개 규정으로 바로 판정합니다.</p>
+      <ul class="quick" id="quick"></ul>
+    </div>
+    <div class="verdict" id="verdict" hidden>
+      <div class="seal" id="seal"><span id="sealText"></span></div>
+      <div class="head">
+        <p class="what" id="what"></p>
+        <h2 id="vTitle"></h2>
+        <p class="cases-hint" id="casesHint"></p>
+      </div>
+      <ol class="reasons" id="reasons"></ol>
+      <div class="split">
+        <section class="box">
+          <h3>갖출 증빙</h3>
+          <ul class="docs" id="evid"></ul>
+        </section>
+        <section class="box" id="agBox">
+          <h3>협약변경</h3>
+          <div id="agSummary"></div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- 근거 -->
+  <section class="panel side">
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="cases" id="tabCases">사례</button>
+      <button role="tab" aria-selected="false" data-tab="agree">협약변경</button>
+      <button role="tab" aria-selected="false" data-tab="law">근거 원문</button>
+    </div>
+    <div class="tabpanel" id="pCases">
+      <div class="dist" id="dist"></div>
+      <ul class="cards" id="cards"></ul>
+      <nav class="pager" id="pager"><button type="button" id="prev" aria-label="이전 사례">‹</button><span id="pageInfo"></span><button type="button" id="next" aria-label="다음 사례">›</button></nav>
+    </div>
+    <div class="tabpanel" id="pAgree" hidden></div>
+    <div class="tabpanel" id="pLaw" hidden></div>
+  </section>
+</main>
+
+<dialog id="dlg"><form method="dialog"><button class="x" aria-label="닫기">×</button></form><div id="dlgBody"></div></dialog>
+<script src="app.js"></script>
+</body>
+</html>

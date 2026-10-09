@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git push)",
+      "Bash(git status *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git remote *)",
+      "Bash(gh repo create postech-research-fund-check *)",
+      "Bash(gh repo view *)",
+      "Bash(gh api repos/ojh23postech-max/postech-research-fund-check/pages *)",
+      "Bash(gh api -X POST repos/ojh23postech-max/postech-research-fund-check/pages *)"
+    ]
+  }
+}
