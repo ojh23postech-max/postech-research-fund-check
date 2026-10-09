@@ -124,6 +124,20 @@ if __name__ == "__main__":
                 if g.get("find") and not any(p["page"] == g["쪽"] and g["find"] in p["text"] for p in pages):
                     g["쪽"] = next(p["page"] for p in pages if g["find"] in p["text"])  # 보정된 쪽 반영
     validate(rules, cases)
+    # 질문별 적용 과제구분: 그 질문을 쓰는 조건들의 track 조건에서 자동 도출 (해당 부처에서만 질문을 보여 주기 위함)
+    ALL = {t["id"] for t in rules["tracks"]}
+    for r in rules["rules"]:
+        for q in r["questions"]:
+            ts = set()
+            for c in r["checks"] + r["agree"]:
+                if any(k == q["id"] for k, _, _ in c["when"]):
+                    t = ALL.copy()
+                    for k, op, v in c["when"]:
+                        if k == "track":
+                            t &= {v} if op == "==" else ALL - {v}
+                    ts |= t
+            assert ts, f"쓰이지 않는 질문: {r['id']}.{q['id']}"
+            q["tracks"] = sorted(ts)
     # 공개 사이트: POSTECH 내규는 조항 번호와 요지만 (전문은 학내 규정집)
     gist = lambda t: t if len(t) <= 200 else t[:200].rstrip() + "… (전문은 POSTECH 규정집 참고)"
     for c in cases:

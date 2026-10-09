@@ -81,6 +81,15 @@ function findRule(q) {
   return score >= 2 ? best : null;
 }
 
+// 확인 질문: 선택한 부처(과제 구분)에 적용되는 것만 표시, 이미 체크한 값은 유지
+function renderQs() {
+  const t = trackOf($("#track").value), on = new Set([...document.querySelectorAll("[data-q]:checked")].map((x) => x.dataset.q));
+  const qs = rule ? rule.questions.filter((q) => q.tracks.includes(t)) : [];
+  $("#qs").innerHTML = "<legend>해당하면 체크</legend>" + (rule
+    ? qs.map((q) => `<label><input type="checkbox" data-q="${q.id}"${on.has(q.id) ? " checked" : ""}>${esc(q.label)}</label>`).join("") || `<p class="none">이 과제 구분에서는 추가로 확인할 사항이 없어요.</p>`
+    : `<p class="none">항목을 고르면 확인할 질문이 나옵니다.</p>`);
+}
+
 // 키워드 입력 → 가장 가까운 항목을 목록에서도 선택
 function pick() {
   const q = $("#item").value.trim();
@@ -91,9 +100,7 @@ function setRule(r) {
   $("#itemSel").value = r ? r.id : "";
   if (r !== rule) {
     rule = r;
-    $("#qs").innerHTML = "<legend>해당하면 체크</legend>" + (r
-      ? r.questions.map((q) => `<label><input type="checkbox" data-q="${q.id}">${esc(q.label)}</label>`).join("")
-      : `<p class="none">항목을 고르면 확인할 질문이 나옵니다.</p>`);
+    renderQs();
     if (r) history.replaceState(null, "", "#" + r.id);
   }
   run();
@@ -243,8 +250,10 @@ function showCase(c) {
     <p class="why">${c.자동 ? `자동 분류(키워드 “${esc(c.판정근거)}” 기준)입니다. 원문 답변으로 판단하세요.` : `${esc(c.판정근거.replace(/^검수: /, "판정 이유: "))}`}<br>판정이 원문과 다르면 연구지원팀에 알려 주세요.</p>`);
 }
 
+// 조건의 track 부분만 보고 지금 과제 구분에 해당하는지
+const trackOk = (when, t) => when.every(([k, op, v]) => k !== "track" || OPS[op](t, v));
 function renderAgreeTab(ag) {
-  const all = rule.agree;
+  const all = rule.agree.filter((a) => trackOk(a.when, trackOf($("#track").value)));
   $("#pAgree").innerHTML = all.length
     ? `<p class="hint">이 항목과 관련된 협약변경 기준입니다. 입력 조건에 해당하는 항목은 판정 표지가 붙습니다.</p><ul class="agl">${all.map((a) => {
         const m = ag.find((x) => x.내용 === a.내용);
@@ -316,7 +325,7 @@ $("#form").addEventListener("input", (e) => {
   if (e.target.id === "item") return pick();
   run();
 });
-$("#track").addEventListener("change", () => { renderRegs(); if (!rule) renderCases(null); });
+$("#track").addEventListener("change", () => { renderQs(); renderRegs(); if (!rule) renderCases(null); });
 $("#itemSel").addEventListener("change", () => { $("#item").value = ""; setRule(D.rules.find((r) => r.id === $("#itemSel").value) || null); });
 // 달력 버튼: 숨은 date 입력의 기본 달력을 열고, 고른 날짜를 글자 칸에 넣음
 $("#form").addEventListener("click", (e) => {

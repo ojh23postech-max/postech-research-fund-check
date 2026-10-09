@@ -3,7 +3,7 @@
 - IRIS /contents/ 경로는 robots.txt 허용. NRF(nrf.re.kr)는 robots.txt가 'Disallow: /' 이지만
   기관 결정(2026-10-10)으로 공개·답변완료 글만 저속(요청 간 3초) 수집한다. 차단·요청 시 즉시 중단할 것.
 - NRF는 답변완료 글이 14만 건이 넘어 실행마다 신규 글 + 과거 글 일부(--nrf-pages, --nrf-details)만 이어서 수집한다.
-- 공개글(blltOpenRangSe != PG5001)이면서 답변이 달린 글만 저장. 작성자 이름·연락처는 저장하지 않는다.
+- 공개글(blltOpenRangSe == PG5002, 상세 화면 '공개여부: 공개')이면서 답변이 달린 글만 저장. 작성자 이름·연락처는 저장하지 않는다.
 - 증분 수집: data/board_state.json에 마지막 글번호와 답변 대기 글을 기록. 요청 간 1.5초 지연.
 사용: python pipeline/crawl_qna.py [--pages N] [--nrf-pages 150] [--nrf-details 1500] [--skip-iris|--skip-nrf]
 """
@@ -56,6 +56,8 @@ def detail(board, x):
     a = re.findall(r'class="reply_txt">(.*?)</div>', t, re.S)
     d = re.search(r'class="date">\s*([\d/]+)', t)
     field = re.search(r"질의 분야\(중분류\)</strong>\s*<span>([^<]*)", t)
+    if board != "IRIS FAQ" and not re.search(r"공개여부</strong>\s*<span>\s*공개\s*<", t):
+        return "", "", "", ""  # 상세 화면에서 '공개'가 아니면 저장하지 않음
     if board == "IRIS FAQ":  # FAQ는 운영단 안내문 자체가 답변(숨은 input에 이스케이프된 HTML)
         m = re.search(r"name=\"blltCn\" value='(.*?)'/>", t, re.S)
         return "", (scrub(html.unescape(m.group(1))) if m else ""), "", ""
@@ -85,7 +87,7 @@ def crawl(max_pages, state, cases):
             time.sleep(DELAY)
             fresh = [x for x in rows if x["blltSeq"] > st["maxSeq"]]
             new_max = max([new_max] + [x["blltSeq"] for x in rows])
-            todo += [x for x in fresh if x.get("blltOpenRangSe") != "PG5001"]
+            todo += [x for x in fresh if board == "IRIS FAQ" or x.get("blltOpenRangSe") == "PG5002"]  # PG5002=공개만 (PG5001·PG5004는 비공개)
             if len(fresh) < len(rows):  # 이전 수집 지점 도달
                 break
             n += 1
