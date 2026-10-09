@@ -33,9 +33,17 @@ def scrub(t):
     t = html.unescape(re.sub(r"<br\s*/?>", "\n", t))
     t = re.sub(r"<[^>]+>", "", t)
     t = re.sub(r"[\w.+-]+@[\w-]+\.[\w.]+", "[이메일]", t)
-    t = re.sub(r"\b0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4}\b", "[전화]", t)
-    t = re.sub(r"\b\d{6}-?[1-4]\d{6}\b", "[번호]", t)
+    # 한글이 바로 붙는 경우("…9773으로")도 있어 \b 대신 숫자 경계로 판단
+    t = re.sub(r"(?<!\d)0\d{1,2}[-. )]?\d{2,4}[-. ]?\d{4,5}(?!\d)", "[전화]", t)
+    t = re.sub(r"(?<!\d)\d{6}-?[1-4]\d{6}(?!\d)", "[번호]", t)
     t = re.sub(r"([가-힣A-Za-z·]+(?:팀|부|실|센터|단|과))\s*[가-힣]{2,4}\s*(?:입니다|이며|드림)", r"\1 담당자입니다", t)  # 담당 직원 이름
+    # 답변자 인사·연락처 문장은 통째로 뺌(이름·직함·번호가 섞여 있음): "○○실 홍길동 선임연구원입니다.", "…로 문의 바랍니다." 등
+    TITLE = r"(?:선임연구원|책임연구원|전임연구원|선임|책임|주임|대리|과장|팀장|차장|부장|연구원)"
+    sents = re.split(r"(?<=[.!?])\s+|\n", t)
+    drop = lambda x: (re.search(r"\[전화\]|\[이메일\]|(?<!\d)\d{4}(?:~\d)?(?:,\s*\d{4})+|연락\s?(?:주|부탁|바랍|하시)|(?:문의|연락)(?:해|하여)?\s?주시|문의\s?(?:바랍|부탁|하시기|주십|드리)", x)
+                      or re.search(r"[가-힣]{2,4}\s?" + TITLE + r"\s?(?:입니다|이며|\()", x)
+                      or re.search(r"(?:담당자|실|팀)\s+[가-힣]{2,4}\s*\(", x))
+    t = "\n".join(x for x in sents if x.strip() and not drop(x))
     return re.sub(r"[ \t]+", " ", re.sub(r"\n\s*\n+", "\n", t)).strip()
 
 
@@ -195,7 +203,9 @@ def nrf_manual():
 
 
 if __name__ == "__main__":
-    assert scrub("연락처 010-1234-5678, a.b@postech.ac.kr") == "연락처 [전화], [이메일]"
+    assert scrub("가능합니다. 연락처 010-1234-5678, a.b@postech.ac.kr") == "가능합니다."  # 연락처 문장은 통째로 제외
+    assert scrub("가능합니다. 061-338-9773으로 연락주시기 바랍니다.") == "가능합니다."
+    assert scrub("○○실 홍길동 선임연구원입니다. 집행 가능합니다.") == "집행 가능합니다."
     assert "담당자입니다" in scrub("이공학술지원팀 임보혜 입니다.")
     arg = lambda k, d: int(sys.argv[sys.argv.index(k) + 1]) if k in sys.argv else d
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}

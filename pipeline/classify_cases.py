@@ -221,6 +221,14 @@ def check():
     assert bimok("학생연구자 인건비") == "학생인건비" and bimok("해외 출장 항공료") == "연구활동비-여비"
 
 
+def rescrub(c):
+    """게시판 글은 수집 당시 가림 기준이 지금보다 약했을 수 있어 매번 다시 가림(이름·연락처)"""
+    from crawl_qna import scrub
+    for k in ("제목", "질의", "답변"):
+        if c.get(k):
+            c[k] = scrub(c[k])
+
+
 if __name__ == "__main__":
     check()
     cases = extract()
@@ -228,6 +236,7 @@ if __name__ == "__main__":
     board = ROOT / "data" / "board_cases.json"
     if board.exists():
         for c in json.loads(board.read_text(encoding="utf-8")):
+            rescrub(c)
             c["판정"], c["판정근거"] = verdict(c["답변"], "Q&A")
             c["자동"] = True  # 사람 검수 전(키워드 분류) 표시 — overrides로 검수하면 해제
             c["비목"] = bimok(c["제목"] + " " + c.get("질의", "")[:300])
@@ -238,6 +247,7 @@ if __name__ == "__main__":
         for c in json.loads(agency.read_text(encoding="utf-8")):
             if not re.search(r"연구(?:개발)?비|사업비|집행|정산|인건비|협약|비목|계상|간접비|장비|재료|출장|회의|수당|위탁|이월|카드|부가세|환수|불인정", c["제목"] + c["질의"] + c["답변"][:300]):
                 continue  # 회원가입·시스템 사용 안내 등 연구비와 무관한 글
+            rescrub(c)
             c["판정"], c["판정근거"] = verdict(c["답변"], "Q&A")
             c["자동"] = True
             c["비목"] = bimok(c["제목"] + " " + c.get("질의", "")[:300])
