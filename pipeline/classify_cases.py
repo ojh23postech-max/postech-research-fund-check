@@ -236,6 +236,8 @@ if __name__ == "__main__":
     agency = ROOT / "data" / "agency_cases.json"
     if agency.exists():
         for c in json.loads(agency.read_text(encoding="utf-8")):
+            if not re.search(r"연구(?:개발)?비|사업비|집행|정산|인건비|협약|비목|계상|간접비|장비|재료|출장|회의|수당|위탁|이월|카드|부가세|환수|불인정", c["제목"] + c["질의"] + c["답변"][:300]):
+                continue  # 회원가입·시스템 사용 안내 등 연구비와 무관한 글
             c["판정"], c["판정근거"] = verdict(c["답변"], "Q&A")
             c["자동"] = True
             c["비목"] = bimok(c["제목"] + " " + c.get("질의", "")[:300])
