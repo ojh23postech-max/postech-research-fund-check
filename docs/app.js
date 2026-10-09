@@ -1,8 +1,9 @@
 // 연구비 집행 점검: 규칙 판정·사례 검색 모두 브라우저에서 처리 (서버·LLM 호출 없음)
 const $ = (s) => document.querySelector(s);
 const RANK = { 인정: 0, 판단필요: 1, 불인정: 2 };
-const LABEL = { 인정: "적정", 판단필요: "확인 필요", 불인정: "부적정" };
-const SEAL = { 인정: "적정", 판단필요: "확인<br>필요", 불인정: "부적정" };
+const LABEL = { 인정: "집행할 수 있어요", 판단필요: "확인이 필요해요", 불인정: "이대로는 집행할 수 없어요" };
+const ico = (d) => `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const SEAL = { 인정: ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>'), 판단필요: ico('<path d="M12 7v6"/><path d="M12 17h.01"/>'), 불인정: ico('<path d="M7 7l10 10M17 7L7 17"/>') };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const tag = (v) => `<span class="tag" data-v="${v}">${v}</span>`;
 const grams = (s) => { s = s.replace(/\s+/g, ""); const g = new Set(); for (let i = 0; i < s.length - 1; i++) g.add(s.slice(i, i + 2)); return g; };
@@ -48,6 +49,7 @@ fetch("data.json").then((r) => r.json()).then((d) => {
   $("#track").innerHTML = `<optgroup label="국가연구개발사업">${MINISTRIES.map(([m, a]) => `<option value="${m}">${m}${a ? ` (${a})` : ""}</option>`).join("")}</optgroup>
     <optgroup label="정부 외"><option value="__private">산업체·POSCO·기타 민간과제</option><option value="__internal">교내 연구개발과제(교비)</option></optgroup>`;
   renderRegs();
+  renderCases(null);
   const groups = [...new Set(D.rules.map((r) => r.비목))];
   $("#itemSel").insertAdjacentHTML("beforeend", groups.map((g) => `<optgroup label="${esc(g)}">${D.rules.filter((r) => r.비목 === g)
     .map((r) => `<option value="${r.id}">${esc(r.항목)}</option>`).join("")}</optgroup>`).join(""));
@@ -146,8 +148,9 @@ function run() {
   const seal = $("#seal");
   if (seal.dataset.v !== v) { seal.classList.remove("stamp"); void seal.offsetWidth; seal.classList.add("stamp"); }
   seal.dataset.v = v; $("#sealText").innerHTML = SEAL[v];
-  $("#what").textContent = `${rule.비목} · ${regLine(f.ministry)}`;
-  $("#vTitle").textContent = `${rule.항목}: ${LABEL[v]}`;
+  $("#what").innerHTML = `<b>${esc(rule.항목)}</b> · ${esc(regLine(f.ministry))}`;
+  $("#vTitle").textContent = LABEL[v];
+  $("#seal").setAttribute("aria-label", { 인정: "적정", 판단필요: "확인 필요", 불인정: "부적정" }[v]);
 
   const items = [
     ...hits.sort((a, b) => RANK[b.판정] - RANK[a.판정]).map((h) => ({ v: h.판정, t: h.사유, g: h.근거 })),
@@ -198,8 +201,8 @@ function renderCases(v = lastV) {
     `<button type="button" data-f="${k}" aria-pressed="${filter === k}">${tag(k)}<b>${cnt[k]}</b></button>`).join("");
   if (v) {
     $("#casesHint").innerHTML = matched.length
-      ? `유사 사례 ${matched.length}건 중 인정 ${cnt.인정} · <b class="${cnt.불인정 ? "bad" : ""}">불인정 ${cnt.불인정}</b> · 판단필요 ${cnt.판단필요}${v === "인정" && cnt.불인정 ? ". 불인정 사례가 있으니 조건을 다시 확인하세요." : ""}`
-      : "유사 사례를 찾지 못했습니다.";
+      ? `<span class="pill">비슷한 사례 <b>${matched.length}</b></span>${["인정", "불인정", "판단필요"].map((k) => `<span class="pill" data-v="${k}">${k} <b>${cnt[k]}</b></span>`).join("")}${v === "인정" && cnt.불인정 ? `<span class="warn-note">불인정 사례가 있어요. 조건을 한 번 더 확인하세요.</span>` : ""}`
+      : `<span class="pill">비슷한 사례를 찾지 못했어요</span>`;
   }
   page = 0; drawCards();
 }

@@ -5,15 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>연구비 집행 점검 | POSTECH</title>
 <meta name="description" content="국가R&D·산업부·POSTECH 규정으로 연구비 집행 적정성을 점검하고 관련 사례와 협약변경 필요 여부를 확인합니다.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
-  <h1>연구비 집행 점검</h1>
+  <h1 class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>연구비 집행 점검</h1>
   <p class="meta" id="meta">규정 불러오는 중</p>
   <p class="notice">참고용 안내입니다. 최종 판단은 연구지원팀과 전문기관 기준을 따르세요.</p>
 </header>
@@ -22,9 +19,11 @@
   <!-- 입력 -->
   <form class="panel input" id="form" autocomplete="off">
     <h2 class="sr">집행 정보 입력</h2>
+    <p class="step">과제 정보</p>
     <label class="field">소관 부처 (전문기관)
       <select id="track"></select>
     </label>
+    <p class="step">무엇을 집행하나요?</p>
     <label class="field">집행 항목
       <select id="itemSel"><option value="">목록에서 고르세요</option></select>
     </label>
@@ -53,8 +52,9 @@
   <!-- 판정 -->
   <section class="panel result" aria-live="polite" id="result">
     <div class="empty" id="empty">
-      <p class="lead">집행하려는 항목을 입력하세요.</p>
-      <p>국가연구개발혁신법 매뉴얼, NRF Q&amp;A 사례집, 산업부 공통 운영요령, POSTECH 연구비관리지침·여비규정 등 14개 규정으로 바로 판정합니다.</p>
+      <p class="eyebrow">연구비 집행 점검</p>
+      <p class="lead">어떤 연구비를 쓰려고 하세요?</p>
+      <p>왼쪽에서 항목을 고르면 혁신법·부처 규정·POSTECH 내규로 바로 판정하고, 비슷한 사례와 협약변경 필요 여부도 함께 알려 드려요.</p>
       <ul class="quick" id="quick"></ul>
     </div>
     <div class="verdict" id="verdict" hidden>
@@ -62,7 +62,7 @@
       <div class="head">
         <p class="what" id="what"></p>
         <h2 id="vTitle"></h2>
-        <p class="cases-hint" id="casesHint"></p>
+        <div class="cases-hint" id="casesHint"></div>
       </div>
       <ol class="reasons" id="reasons"></ol>
       <div class="split">
