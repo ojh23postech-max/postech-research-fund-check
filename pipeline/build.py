@@ -30,9 +30,12 @@ def excerpt(pages, page, hint, find=None):
     pg = next((p for p in pages if p["page"] == page), None)
     if not pg:
         return ""
-    if find:  # 수동 지정: 해당 문자열이 있는 줄부터
+    if find:  # 수동 지정: 해당 문자열이 있는 줄부터 (쪽이 틀렸으면 문서 전체에서 찾아 바로잡음)
+        if find not in pg["text"]:
+            pg = next((p for p in pages if find in p["text"]), None)
+            assert pg, f"발췌 문자열 없음: {find} (p{page})"
+            print(f"  쪽 보정: '{find[:20]}' p{page} → p{pg['page']}")
         i = pg["text"].find(find)
-        assert i >= 0, f"발췌 문자열 없음: {find} (p{page})"
         return re.sub(r"\s*\n\s*", " ", pg["text"][pg["text"].rfind("\n", 0, i) + 1:])[:420]
     paras = [x for x in re.split(r"\n(?=\s*(?:[-➊➋➌➍➎➏①②③④⑤⑥⑦⑧∙•※]|\d+\.|제\d+조|[가-하]\.))", pg["text"]) if len(x) > 20]
     h = grams(hint)
@@ -58,9 +61,8 @@ def article_cases(texts):
             if not re.search(r"연구비|연구개발비|집행|지급|계상|사용|출장|여비|구입|계약|정산", body):
                 continue
             page = int((re.findall(r"<<(\d+)>>", full[:m.start()]) or [1])[-1])
-            neg, cond = re.search(NEG, body), re.search(COND, body)
-            v = "불인정" if neg else "판단필요" if cond else "인정"
-            why = (neg or cond).group(0) if (neg or cond) else "허용 조항"
+            # 조문은 허용·금지가 섞여 있어 키워드 판정이 의미 없음 → 근거 조항으로만 보여줌
+            v, why = "참고", "규정 조항"
             out.append({
                 "id": "art-" + hashlib.md5((name + no).encode()).hexdigest()[:8], "출처구분": "참고자료", "출처": name, "쪽": page,
                 "유형": "규정조항", "제목": f"{no}({title})", "질의": f"{name} {no}({title})",
@@ -101,7 +103,7 @@ def validate(rules, cases):
             for f, op, v in c["when"]:
                 assert op in ("==", "!=", ">", ">=", "<", "<="), op
     for c in cases:
-        if c["판정"] not in ("인정", "불인정", "판단필요"):
+        if c["판정"] not in ("인정", "불인정", "판단필요", "참고"):
             errs.append(f"{c['id']}: 판정값 {c['판정']}")
         if not (c.get("쪽") or c.get("원문URL")):
             errs.append(f"{c['id']}: 근거 위치 없음")
@@ -119,6 +121,8 @@ if __name__ == "__main__":
                 pages = find_doc(texts, g["문서"])
                 assert pages, f"문서 없음: {g['문서']}"
                 g["발췌"] = excerpt(pages, g["쪽"], g["조항"] + " " + c.get("사유", c.get("내용", "")), g.get("find"))
+                if g.get("find") and not any(p["page"] == g["쪽"] and g["find"] in p["text"] for p in pages):
+                    g["쪽"] = next(p["page"] for p in pages if g["find"] in p["text"])  # 보정된 쪽 반영
     validate(rules, cases)
     # 공개 사이트: POSTECH 내규는 조항 번호와 요지만 (전문은 학내 규정집)
     gist = lambda t: t if len(t) <= 200 else t[:200].rstrip() + "… (전문은 POSTECH 규정집 참고)"
@@ -134,7 +138,7 @@ if __name__ == "__main__":
     docs = sorted({c["출처"] for c in cases} | set(texts))
     meta = {"기준일": date.today().isoformat(), "문서": docs,
             "사례수": len(cases), "게시판수": sum(c["출처구분"] != "참고자료" for c in cases)}
-    slim = [{k: c[k] for k in ("id", "출처구분", "출처", "쪽", "유형", "제목", "답변", "비목", "판정", "판정근거")} | ({"원문URL": c["원문URL"]} if c.get("원문URL") else {}) for c in cases]
+    slim = [{k: c[k] for k in ("id", "출처구분", "출처", "쪽", "유형", "제목", "답변", "비목", "판정", "판정근거")} | ({"원문URL": c["원문URL"]} if c.get("원문URL") else {}) | ({"자동": 1} if c.get("자동") else {}) for c in cases]
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps({"meta": meta, "tracks": rules["tracks"], "ministries": ministries, "rules": rules["rules"], "cases": slim}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     from collections import Counter

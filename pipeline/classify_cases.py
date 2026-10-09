@@ -179,12 +179,14 @@ if __name__ == "__main__":
     if board.exists():
         for c in json.loads(board.read_text(encoding="utf-8")):
             c["판정"], c["판정근거"] = verdict(c["답변"], "Q&A")
+            c["자동"] = True  # 사람 검수 전(키워드 분류) 표시 — overrides로 검수하면 해제
             c["비목"] = bimok(c["제목"] + " " + c.get("질의", "")[:300])
             cases.append(c)
     if OVERRIDES.exists():  # case-curator 수정분이 최우선
         ov = json.loads(OVERRIDES.read_text(encoding="utf-8"))
         for c in cases:
-            c.update(ov.get(c["id"], {}))
+            if c["id"] in ov:
+                c.update(ov[c["id"]]); c.pop("자동", None)
     OUT.write_text(json.dumps(cases, ensure_ascii=False, indent=1), encoding="utf-8")
     from collections import Counter
     print(len(cases), "건", Counter(c["판정"] for c in cases), Counter(c["출처"] for c in cases).most_common())

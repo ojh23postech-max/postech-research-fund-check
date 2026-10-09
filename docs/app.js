@@ -7,7 +7,8 @@ const SEAL = { 인정: ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>'), 판단필요: 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const tag = (v) => `<span class="tag" data-v="${v}">${v}</span>`;
 const grams = (s) => { s = s.replace(/\s+/g, ""); const g = new Set(); for (let i = 0; i < s.length - 1; i++) g.add(s.slice(i, i + 2)); return g; };
-const cite = (g) => `${g.문서} ${g.조항} (PDF ${g.쪽}쪽)`;
+const where = (doc, p) => (/산업기술혁신|운영요령/.test(doc) && !/POSTECH/.test(doc) ? `HWP 원문 ${p}구간` : `PDF ${p}쪽`); // 운영요령은 HWP라 쪽 대신 추출 구간
+const cite = (g) => `${g.문서} ${g.조항} (${where(g.문서, g.쪽)})`;
 
 // 날짜: 숫자만 쳐도 2026-10-09 형태로 맞춰 줌 (type=date는 연도 칸이 6자리라 숫자 연속 입력이 안 됨)
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -152,11 +153,14 @@ function run() {
   $("#vTitle").textContent = LABEL[v];
   $("#seal").setAttribute("aria-label", { 인정: "적정", 판단필요: "확인 필요", 불인정: "부적정" }[v]);
 
+  // 근거 순서: 산업부는 공통 운영요령 → 혁신법, 그 외 국가R&D는 혁신법 → POSTECH, 민간은 POSTECH 먼저
+  const pri = { motie: ["산업기술혁신", "혁신법", "POSTECH"], national: ["혁신법", "NRF", "POSTECH"], private: ["POSTECH"] }[f.track];
+  const ord = (gs) => [...gs].sort((a, b) => rankDoc(a.문서, pri) - rankDoc(b.문서, pri));
   const items = [
-    ...hits.sort((a, b) => RANK[b.판정] - RANK[a.판정]).map((h) => ({ v: h.판정, t: h.사유, g: h.근거 })),
-    ...ag.filter((a) => a.v !== "인정").map((a) => ({ v: a.v, t: `협약변경(${a.유형}): ${a.내용}. ${a.msg}.`, g: a.근거 })),
+    ...hits.sort((a, b) => RANK[b.판정] - RANK[a.판정]).map((h) => ({ v: h.판정, t: h.사유, g: ord(h.근거) })),
+    ...ag.filter((a) => a.v !== "인정").map((a) => ({ v: a.v, t: `협약변경(${a.유형}): ${a.내용}. ${a.msg}.`, g: ord(a.근거) })),
   ];
-  if (!items.length) items.push({ v: "인정", t: rule.base.사유, g: rule.base.근거 });
+  if (!items.length) items.push({ v: "인정", t: rule.base.사유, g: ord(rule.base.근거) });
   const row = (x, i) => `<li data-v="${x.v}">${tag(x.v)}<span>${esc(x.t)}</span>
       <span class="src"><button type="button" data-law="${i}">${esc(cite(x.g[0]))}</button>${x.g.length > 1 ? ` 외 ${x.g.length - 1}건` : ""}</span>
       ${x.g[0].발췌 ? `<q class="ex">${esc(x.g[0].발췌)}</q>` : ""}</li>`;
@@ -189,19 +193,21 @@ function renderCases(v = lastV) {
   if (!D) return;
   const g = grams(q + " " + (rule ? rule.keywords.join(" ") : ""));
   // 참고자료(공식 문서) 우선, 그 안에서 관련도 순
-  matched = q ? D.cases.map((c) => {
+  const motie = trackOf($("#track").value) === "motie";
+  matched = q ? D.cases.filter((c) => !(motie && /NRF/.test(c.출처))).map((c) => {
     let s = 0; g.forEach((x) => c.g.has(x) && s++);
     if (rule && c.비목 === rule.비목) s += 4;
+    if (motie && /산업기술혁신/.test(c.출처)) s += 4; // 산업부 과제는 공통 운영요령 우선
     return [s, c];
-  }).filter(([s]) => s >= 6).sort((a, b) => (b[1].출처구분 === "참고자료") - (a[1].출처구분 === "참고자료") || b[0] - a[0]).map(([, c]) => c) : [];
-  const cnt = { 인정: 0, 불인정: 0, 판단필요: 0 };
+  }).filter(([s]) => s >= 6).sort((a, b) => (a[1].판정 === "참고") - (b[1].판정 === "참고") || (b[1].출처구분 === "참고자료") - (a[1].출처구분 === "참고자료") || b[0] - a[0]).map(([, c]) => c) : [];
+  const cnt = { 인정: 0, 불인정: 0, 판단필요: 0, 참고: 0 };
   matched.forEach((c) => cnt[c.판정]++);
   $("#tabCases").textContent = `사례 ${matched.length}`;
-  $("#dist").innerHTML = ["인정", "불인정", "판단필요"].map((k) =>
+  $("#dist").innerHTML = ["인정", "불인정", "판단필요", "참고"].map((k) =>
     `<button type="button" data-f="${k}" aria-pressed="${filter === k}">${tag(k)}<b>${cnt[k]}</b></button>`).join("");
   if (v) {
     $("#casesHint").innerHTML = matched.length
-      ? `<span class="pill">비슷한 사례 <b>${matched.length}</b></span>${["인정", "불인정", "판단필요"].map((k) => `<span class="pill" data-v="${k}">${k} <b>${cnt[k]}</b></span>`).join("")}${v === "인정" && cnt.불인정 ? `<span class="warn-note">불인정 사례가 있어요. 조건을 한 번 더 확인하세요.</span>` : ""}`
+      ? `<span class="pill">비슷한 사례 <b>${matched.length}</b></span>${["인정", "불인정", "판단필요", "참고"].map((k) => `<span class="pill" data-v="${k}">${k} <b>${cnt[k]}</b></span>`).join("")}${v === "인정" && cnt.불인정 ? `<span class="warn-note">불인정 사례가 있어요. 조건을 한 번 더 확인하세요.</span>` : ""}`
       : `<span class="pill">비슷한 사례를 찾지 못했어요</span>`;
   }
   page = 0; drawCards();
@@ -217,7 +223,7 @@ function drawCards() {
   const pages = Math.max(1, Math.ceil(list.length / per));
   page = Math.min(page, pages - 1);
   box.innerHTML = list.length ? list.slice(page * per, page * per + per).map((c) => `<li><button type="button" data-id="${c.id}">
-      <span class="line">${tag(c.판정)}<span class="src-tag">${esc(c.출처구분 === "참고자료" ? c.출처.replace(/\(.*\)/, "") : c.출처구분)}</span><span class="w">${c.원문URL ? "" : `PDF ${c.쪽}쪽`}</span></span>
+      <span class="line">${tag(c.판정)}<span class="src-tag">${esc(c.출처구분 === "참고자료" ? c.출처.replace(/\(.*\)/, "") : c.출처구분)}</span>${c.자동 ? `<span class="src-tag auto" title="키워드로 자동 분류된 게시판 글입니다. 원문 답변을 꼭 확인하세요.">자동분류</span>` : ""}<span class="w">${c.원문URL ? "" : where(c.출처, c.쪽)}</span></span>
       <span class="t" title="${esc(c.제목)}">${esc(c.제목)}</span><span class="w">${esc(c.비목)} · ${esc(c.판정근거)}</span></button></li>`).join("")
     : `<li class="nothing">${rule ? "조건에 맞는 사례가 없습니다." : "항목을 입력하면 참고자료·게시판의 관련 사례가 나옵니다."}</li>`;
   $("#pageInfo").textContent = `${list.length ? page + 1 : 0} / ${list.length ? pages : 0}`;
@@ -225,9 +231,9 @@ function drawCards() {
 }
 
 function showCase(c) {
-  openDlg(`<p>${tag(c.판정)} <span class="src-tag">${esc(c.출처)}</span> <span class="w">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기</a>` : `PDF ${c.쪽}쪽 · ${esc(c.유형)}`}</span></p>
+  openDlg(`<p>${tag(c.판정)} <span class="src-tag">${esc(c.출처)}</span> <span class="w">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기</a>` : `${where(c.출처, c.쪽)} · ${esc(c.유형)}`}</span></p>
     <h3>${esc(c.제목)}</h3><div class="body">${esc(c.답변)}</div>
-    <p class="why">판정 근거 표현: “${esc(c.판정근거)}” (키워드 기준 자동 분류. 원문과 다르면 연구지원팀에 알려 주세요.)</p>`);
+    <p class="why">${c.자동 ? `자동 분류(키워드 “${esc(c.판정근거)}” 기준)입니다. 원문 답변으로 판단하세요.` : `${esc(c.판정근거.replace(/^검수: /, "판정 이유: "))}`}<br>판정이 원문과 다르면 연구지원팀에 알려 주세요.</p>`);
 }
 
 function renderAgreeTab(ag) {
@@ -248,11 +254,12 @@ function renderAgreeTab(ag) {
       `<li><a href="${esc(c.원문URL)}" target="_blank" rel="noopener">${esc(c.제목)}</a></li>`).join("")}</ul>`);
 }
 
+const rankDoc = (doc, pri) => { const i = pri.findIndex((k) => doc.includes(k)); return i < 0 ? 9 : i; };
 const trackOf = (m) => (m.startsWith("__") ? "private" : MINISTRIES.find((x) => x[0] === m)?.[2] || "national");
 function regLine(m) {
   if (m === "__private") return "지원기관 협약서 + POSTECH 연구비관리지침";
   if (m === "__internal") return "POSTECH 연구개발과제 운영지침";
-  return trackOf(m) === "motie" ? `${m} · 혁신법 공통 + 산업기술혁신사업 공통 운영요령` : `${m} · 혁신법 공통 기준`;
+  return trackOf(m) === "motie" ? `${m} · 산업기술혁신사업 공통 운영요령 우선 + 혁신법 공통` : `${m} · 혁신법 공통 기준`;
 }
 
 // 적용 규정 탭: 상위법 → 공통 고시 → 부처 규정 → POSTECH 내규 순
@@ -265,7 +272,7 @@ function renderRegs() {
   else if (m === "__internal") html = `<ol class="agl"><li>POSTECH 연구개발과제 운영지침</li>${postech}</ol>`;
   else {
     const own = (D.ministries[m] || []).slice(0, 5);
-    const applied = trackOf(m) === "motie" ? "산업기술혁신사업 공통 운영요령의 불인정 기준(회의비·외주용역·장비 심의)을 판정에 반영합니다." :
+    const applied = trackOf(m) === "motie" ? "산업부 과제는 산업기술혁신사업 공통 운영요령을 먼저 적용합니다(최소 인건비계상률 10%, 같은 기관 사람끼리 회의 식비 불가, 개인별 연구수당 70% 한도, 협약변경 승인 목록 등). NRF 사례집은 산업부 과제에 쓰지 않습니다." :
       "판정은 혁신법 공통 기준과 POSTECH 내규로 합니다. 아래 부처·사업 규정에 별도 기준이 있으면 그것이 우선하니 해당 사업 규정을 함께 확인하세요.";
     html = `<p class="hint">${esc(applied)}</p><ol class="agl">${COMMON.map((r) => li(r)).join("")}
       ${own.length ? own.map((r) => li(r)).join("") : `<li>${esc(m)} 소관 별도 연구개발비 규정 없음(법제처 검색 기준). 사업 공고문·협약서의 특약을 확인하세요.</li>`}
@@ -302,7 +309,7 @@ $("#form").addEventListener("input", (e) => {
   if (e.target.id === "item") return pick();
   run();
 });
-$("#track").addEventListener("change", renderRegs);
+$("#track").addEventListener("change", () => { renderRegs(); if (!rule) renderCases(null); });
 $("#itemSel").addEventListener("change", () => { $("#item").value = ""; setRule(D.rules.find((r) => r.id === $("#itemSel").value) || null); });
 // 달력 버튼: 숨은 date 입력의 기본 달력을 열고, 고른 날짜를 글자 칸에 넣음
 $("#form").addEventListener("click", (e) => {

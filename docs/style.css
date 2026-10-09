@@ -117,6 +117,7 @@ legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; ma
 .pill[data-v="인정"] b { color: var(--ok); }
 .pill[data-v="불인정"] b { color: var(--bad); }
 .pill[data-v="판단필요"] b { color: var(--warn); }
+.pill[data-v="참고"] b { color: var(--ink-2); }
 .warn-note { font-size: .8rem; color: var(--bad); font-weight: 600; }
 
 .reasons { grid-column: 1 / -1; margin: 0; padding: 0; list-style: none; display: grid; gap: .55rem; align-content: start; overflow: hidden; }
@@ -147,6 +148,9 @@ legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; ma
 .tag[data-v="불인정"]::before { content: "✕"; }
 .tag[data-v="판단필요"] { color: var(--warn); background: var(--warn-bg); }
 .tag[data-v="판단필요"]::before { content: "△"; }
+.tag[data-v="참고"] { color: var(--ink-2); background: var(--fill); }
+.tag[data-v="참고"]::before { content: "i"; font-style: italic; font-family: Georgia, serif; }
+.src-tag.auto { color: var(--warn); background: var(--warn-bg); }
 .reasons .tag { background: #fff; }
 .src-tag { font-size: .74rem; color: var(--ink-2); background: var(--fill); border-radius: 6px; padding: .1rem .45rem; white-space: nowrap; }
 
@@ -157,10 +161,10 @@ legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; ma
 .tabs button:hover { color: var(--ink-2); }
 .tabs button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0, 23, 51, .12); }
 .tabpanel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.dist { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; margin-bottom: .7rem; }
+.dist { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin-bottom: .7rem; }
 .dist button { border: 2px solid transparent; background: var(--fill); border-radius: var(--r-sm); padding: .5rem .65rem; text-align: left; display: flex; justify-content: space-between; align-items: center; transition: background .15s; }
 .dist button:hover { background: var(--fill-hover); }
-.dist button b { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dist button b { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dist button[aria-pressed="true"] { border-color: var(--blue); background: #fff; }
 .cards { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .45rem; overflow: hidden; }
 .cards li > button { width: 100%; text-align: left; border: 1px solid var(--line); background: #fff; border-radius: var(--r-md); padding: .7rem .85rem; display: grid; gap: .25rem; transition: border-color .15s, box-shadow .15s; }
