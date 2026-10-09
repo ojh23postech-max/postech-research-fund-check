@@ -69,6 +69,26 @@ def article_cases(texts):
     return out
 
 
+# 부처별 R&D 관리 규정(법제처 목록)에서 연구비 집행과 직접 관련된 것만 추림
+REG_PAT = re.compile(r"처리\s?규[정칙]|관리\s?규정|운영\s?(요령|규정)|운영관리\s?규정|관리\s?등에 관한 규정|사업관리규정|지급.*사용|연구개발비")
+REG_SKIP = re.compile(r"이어달리기|심의위원회|보안|평가관리|경제성|비중 산정")
+
+
+def ministry_regs():
+    cat = json.loads((DATA / "regs_catalog.json").read_text(encoding="utf-8")) if (DATA / "regs_catalog.json").exists() else {}
+    out = {}
+    for v in cat.values():
+        if not REG_PAT.search(v["이름"]) or REG_SKIP.search(v["이름"]):
+            continue
+        kind = "법령" if v["target"] == "law" else "행정규칙"
+        item = {"이름": v["이름"], "종류": v["종류"], "시행일": v["시행일자"], "url": f"https://www.law.go.kr/{kind}/{v['이름']}"}
+        for m in v["부처"].split(","):
+            out.setdefault(m.strip(), []).append(item)
+    for m in out:  # 부처 소관 전반 규정(처리규정·운영규정)을 사업별 규정보다 앞에
+        out[m].sort(key=lambda x: (not re.search(r"소관|처리|공통 운영요령|연구개발사업 운영규정", x["이름"]), x["이름"]))
+    return out
+
+
 def validate(rules, cases):
     errs = []
     for r in rules["rules"]:
@@ -109,12 +129,13 @@ if __name__ == "__main__":
             for g in c["근거"]:
                 if g["문서"].startswith("POSTECH"):
                     g["발췌"] = gist(g["발췌"])
+    ministries = ministry_regs()
     docs = sorted({c["출처"] for c in cases} | set(texts))
     meta = {"기준일": date.today().isoformat(), "문서": docs,
             "사례수": len(cases), "게시판수": sum(c["출처구분"] != "참고자료" for c in cases)}
     slim = [{k: c[k] for k in ("id", "출처구분", "출처", "쪽", "유형", "제목", "답변", "비목", "판정", "판정근거")} | ({"원문URL": c["원문URL"]} if c.get("원문URL") else {}) for c in cases]
     OUT.parent.mkdir(exist_ok=True)
-    OUT.write_text(json.dumps({"meta": meta, "tracks": rules["tracks"], "rules": rules["rules"], "cases": slim}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    OUT.write_text(json.dumps({"meta": meta, "tracks": rules["tracks"], "ministries": ministries, "rules": rules["rules"], "cases": slim}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     from collections import Counter
     print(f"OK {OUT.name}: {OUT.stat().st_size // 1024}KB, 규칙 {len(rules['rules'])}, 사례 {len(cases)}", Counter(c["판정"] for c in cases))
     print("문서별:", Counter(c["출처"] for c in cases).most_common())

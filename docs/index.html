@@ -22,29 +22,31 @@
   <!-- 입력 -->
   <form class="panel input" id="form" autocomplete="off">
     <h2 class="sr">집행 정보 입력</h2>
-    <label class="field">과제 구분
+    <label class="field">소관 부처 (전문기관)
       <select id="track"></select>
     </label>
     <label class="field">집행 항목
-      <input id="item" list="items" placeholder="예: 회의비, 노트북, 해외출장" required>
-      <datalist id="items"></datalist>
+      <select id="itemSel"><option value="">목록에서 고르세요</option></select>
+    </label>
+    <label class="field">또는 키워드로 찾기
+      <input id="item" type="search" placeholder="예: 노트북, 해외출장, 자문료">
     </label>
     <div class="row">
       <label class="field">금액(원)<input id="amount" type="number" min="0" step="1000" inputmode="numeric"></label>
       <label class="field">인원<input id="people" type="number" min="1" inputmode="numeric"></label>
     </div>
     <div class="row">
-      <label class="field">집행일<input id="spend" type="date"></label>
-      <label class="field">과제 종료일<input id="end" type="date"></label>
+      <label class="field">집행일<span class="dt"><input id="spend" class="date" inputmode="numeric" maxlength="10" placeholder="20261009" autocomplete="off"><button type="button" class="cal" aria-label="달력에서 고르기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button><input type="date" class="pick" tabindex="-1" aria-hidden="true"></span></label>
+      <label class="field">과제 종료일<span class="dt"><input id="end" class="date" inputmode="numeric" maxlength="10" placeholder="20261009" autocomplete="off"><button type="button" class="cal" aria-label="달력에서 고르기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button><input type="date" class="pick" tabindex="-1" aria-hidden="true"></span></label>
     </div>
     <fieldset class="qs" id="qs"><legend>해당하면 체크</legend></fieldset>
-    <fieldset class="agree">
-      <legend>협약변경(승인·통보) 상태</legend>
+    <fieldset class="agree" id="agreeBox" hidden>
+      <legend>이 집행은 협약변경이 필요합니다. 처리 상태는?</legend>
       <div class="seg" role="radiogroup">
         <label><input type="radio" name="ag" value="done">완료</label>
         <label><input type="radio" name="ag" value="none" checked>안 함·진행 중</label>
       </div>
-      <label class="field" id="agDateWrap" hidden>승인(통보)일<input id="agDate" type="date"></label>
+      <label class="field" id="agDateWrap" hidden>승인(통보)일<span class="dt"><input id="agDate" class="date" inputmode="numeric" maxlength="10" placeholder="20261009" autocomplete="off"><button type="button" class="cal" aria-label="달력에서 고르기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button><input type="date" class="pick" tabindex="-1" aria-hidden="true"></span></label>
     </fieldset>
   </form>
 
@@ -80,6 +82,7 @@
   <section class="panel side">
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-tab="cases" id="tabCases">사례</button>
+      <button role="tab" aria-selected="false" data-tab="regs">적용 규정</button>
       <button role="tab" aria-selected="false" data-tab="agree">협약변경</button>
       <button role="tab" aria-selected="false" data-tab="law">근거 원문</button>
     </div>
@@ -88,6 +91,7 @@
       <ul class="cards" id="cards"></ul>
       <nav class="pager" id="pager"><button type="button" id="prev" aria-label="이전 사례">‹</button><span id="pageInfo"></span><button type="button" id="next" aria-label="다음 사례">›</button></nav>
     </div>
+    <div class="tabpanel" id="pRegs" hidden></div>
     <div class="tabpanel" id="pAgree" hidden></div>
     <div class="tabpanel" id="pLaw" hidden></div>
   </section>

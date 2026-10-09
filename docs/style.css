@@ -43,6 +43,12 @@ button { cursor: pointer; }
 .field { display: flex; flex-direction: column; gap: .2rem; font-size: .82rem; color: var(--ink-2); font-weight: 600; }
 .field input, .field select { height: 2.35rem; padding: 0 .6rem; border: 1px solid var(--rule); border-radius: 7px; background: #fff; color: var(--ink); font-weight: 400; font-size: .95rem; min-width: 0; width: 100%; }
 .field input:focus, .field select:focus { border-color: var(--focus); }
+.dt { position: relative; display: block; }
+.dt .date { padding-right: 2.2rem; }
+.dt .cal { position: absolute; right: .25rem; top: 50%; transform: translateY(-50%); width: 1.9rem; height: 1.9rem; border: 0; background: none; color: var(--ink-2); display: grid; place-items: center; border-radius: 5px; }
+.dt .cal:hover { background: var(--paper); color: var(--ink); }
+.dt .pick { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+.field input[aria-invalid="true"] { border-color: var(--bad); background: var(--bad-bg); }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 fieldset { border: 0; margin: 0; padding: 0; }
 legend { font-size: .82rem; font-weight: 600; color: var(--ink-2); padding: 0; margin-bottom: .25rem; }
