@@ -161,6 +161,10 @@ legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; ma
 .tabs button:hover { color: var(--ink-2); }
 .tabs button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0, 23, 51, .12); }
 .tabpanel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.case-search { display: flex; align-items: center; gap: .5rem; background: var(--fill); border-radius: var(--r-sm); padding: 0 .8rem; margin-bottom: .55rem; color: var(--ink-3); border: 2px solid transparent; transition: border-color .15s, background .15s; }
+.case-search:focus-within { background: #fff; border-color: var(--blue); color: var(--blue); }
+.case-search input { flex: 1; min-width: 0; height: 2.4rem; border: 0; background: none; outline: none; font-size: .9rem; color: var(--ink); }
+.case-search input::placeholder { color: var(--ink-3); }
 .dist { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin-bottom: .7rem; }
 .dist button { border: 2px solid transparent; background: var(--fill); border-radius: var(--r-sm); padding: .5rem .65rem; text-align: left; display: flex; justify-content: space-between; align-items: center; transition: background .15s; }
 .dist button:hover { background: var(--fill-hover); }

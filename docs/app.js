@@ -200,14 +200,21 @@ function renderCases(v = lastV) {
     if (motie && /산업기술혁신/.test(c.출처)) s += 4; // 산업부 과제는 공통 운영요령 우선
     return [s, c];
   }).filter(([s]) => s >= 6).sort((a, b) => (a[1].판정 === "참고") - (b[1].판정 === "참고") || (b[1].출처구분 === "참고자료") - (a[1].출처구분 === "참고자료") || b[0] - a[0]).map(([, c]) => c) : [];
-  const cnt = { 인정: 0, 불인정: 0, 판단필요: 0, 참고: 0 };
-  matched.forEach((c) => cnt[c.판정]++);
+  // 항목과 관련된 사례(판정 요약용) → 사례 검색어로 한 번 더 거름. 항목이 없으면 전체 사례에서 검색
+  const base = matched, cntOf = (l) => { const n = { 인정: 0, 불인정: 0, 판단필요: 0, 참고: 0 }; l.forEach((c) => n[c.판정]++); return n; };
+  const terms = $("#caseQ").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length) {
+    const pool = base.length ? base : D.cases.filter((c) => !(motie && /NRF/.test(c.출처)));
+    matched = pool.filter((c) => { const t = (c.제목 + " " + c.답변 + " " + c.비목 + " " + c.출처).toLowerCase(); return terms.every((w) => t.includes(w)); });
+    if (!base.length) matched.sort((a, b) => (a.판정 === "참고") - (b.판정 === "참고") || (b.출처구분 === "참고자료") - (a.출처구분 === "참고자료"));
+  }
+  const cnt = cntOf(matched), baseCnt = cntOf(base);
   $("#tabCases").textContent = `사례 ${matched.length}`;
   $("#dist").innerHTML = ["인정", "불인정", "판단필요", "참고"].map((k) =>
     `<button type="button" data-f="${k}" aria-pressed="${filter === k}">${tag(k)}<b>${cnt[k]}</b></button>`).join("");
   if (v) {
-    $("#casesHint").innerHTML = matched.length
-      ? `<span class="pill">비슷한 사례 <b>${matched.length}</b></span>${["인정", "불인정", "판단필요", "참고"].map((k) => `<span class="pill" data-v="${k}">${k} <b>${cnt[k]}</b></span>`).join("")}${v === "인정" && cnt.불인정 ? `<span class="warn-note">불인정 사례가 있어요. 조건을 한 번 더 확인하세요.</span>` : ""}`
+    $("#casesHint").innerHTML = base.length
+      ? `<span class="pill">비슷한 사례 <b>${base.length}</b></span>${["인정", "불인정", "판단필요", "참고"].map((k) => `<span class="pill" data-v="${k}">${k} <b>${baseCnt[k]}</b></span>`).join("")}${v === "인정" && baseCnt.불인정 ? `<span class="warn-note">불인정 사례가 있어요. 조건을 한 번 더 확인하세요.</span>` : ""}`
       : `<span class="pill">비슷한 사례를 찾지 못했어요</span>`;
   }
   page = 0; drawCards();
@@ -225,7 +232,7 @@ function drawCards() {
   box.innerHTML = list.length ? list.slice(page * per, page * per + per).map((c) => `<li><button type="button" data-id="${c.id}">
       <span class="line">${tag(c.판정)}<span class="src-tag">${esc(c.출처구분 === "참고자료" ? c.출처.replace(/\(.*\)/, "") : c.출처구분)}</span>${c.자동 ? `<span class="src-tag auto" title="키워드로 자동 분류된 게시판 글입니다. 원문 답변을 꼭 확인하세요.">자동분류</span>` : ""}<span class="w">${c.원문URL ? "" : where(c.출처, c.쪽)}</span></span>
       <span class="t" title="${esc(c.제목)}">${esc(c.제목)}</span><span class="w">${esc(c.비목)} · ${esc(c.판정근거)}</span></button></li>`).join("")
-    : `<li class="nothing">${rule ? "조건에 맞는 사례가 없습니다." : "항목을 입력하면 참고자료·게시판의 관련 사례가 나옵니다."}</li>`;
+    : `<li class="nothing">${$("#caseQ").value.trim() ? "검색어에 맞는 사례가 없어요. 다른 말로 찾아보세요." : rule ? "조건에 맞는 사례가 없습니다." : "항목을 고르거나 위 검색창에 찾을 말을 입력하세요."}</li>`;
   $("#pageInfo").textContent = `${list.length ? page + 1 : 0} / ${list.length ? pages : 0}`;
   $("#prev").disabled = page === 0; $("#next").disabled = page >= pages - 1;
 }
@@ -321,6 +328,7 @@ $("#form").addEventListener("click", (e) => {
 });
 $("#form").addEventListener("submit", (e) => e.preventDefault());
 $("#quick").addEventListener("click", (e) => { if (e.target.tagName === "BUTTON") { $("#item").value = ""; setRule(findRule(e.target.textContent)); } });
+$("#caseQ").addEventListener("input", () => { filter = null; renderCases(); });
 $("#dist").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (!b) return; filter = filter === b.dataset.f ? null : b.dataset.f; renderCases(); });
 $("#cards").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) showCase(D.cases.find((c) => c.id === b.dataset.id)); });
 $("#prev").onclick = () => { page--; drawCards(); };
