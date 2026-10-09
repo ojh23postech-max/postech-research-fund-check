@@ -208,7 +208,7 @@ if __name__ == "__main__":
     assert scrub("가능합니다. 연락처 010-1234-5678, a.b@postech.ac.kr") == "가능합니다."  # 연락처 문장은 통째로 제외
     assert scrub("가능합니다. 061-338-9773으로 연락주시기 바랍니다.") == "가능합니다."
     assert scrub("○○실 홍길동 선임연구원입니다. 집행 가능합니다.") == "집행 가능합니다."
-    assert "담당자입니다" in scrub("이공학술지원팀 임보혜 입니다.")
+    assert "임보혜" not in scrub("이공학술지원팀 임보혜 입니다. 집행 가능합니다.")  # 담당자 인사 문장은 제거
     arg = lambda k, d: int(sys.argv[sys.argv.index(k) + 1]) if k in sys.argv else d
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
     cases = {c["id"]: c for c in (json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else []) if not c["id"].startswith("nrfcsv-")}
