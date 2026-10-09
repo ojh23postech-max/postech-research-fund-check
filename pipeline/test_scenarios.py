@@ -15,9 +15,10 @@ def hit(when, f):
     return all(f.get(k) is not None and OPS[op](f[k], v) for k, op, v in when)
 
 
-def judge(rid, track="national", amount=None, people=None, spend="2026-10-01", end=None, agree=None, agree_date=None, **ans):
+def judge(rid, track="national", ministry=None, amount=None, people=None, spend="2026-10-01", end=None, agree=None, agree_date=None, **ans):
     r = RULES[rid]
-    f = {"track": track, "amount": amount, "people": people,
+    ministry = ministry or {"national": "과학기술정보통신부", "motie": "산업통상부", "private": "__private"}[track]
+    f = {"track": track, "ministry": ministry, "amount": amount, "people": people,
          "perPerson": amount / people if amount is not None and people else None,
          "daysToEnd": (date.fromisoformat(end) - date.fromisoformat(spend)).days if end else None}
     f.update({q["id"]: bool(ans.get(q["id"])) for q in r["questions"]})
@@ -34,6 +35,15 @@ def judge(rid, track="national", amount=None, people=None, spend="2026-10-01", e
 
 # (설명, 규칙, 입력, 기대)
 S = [
+    ("국외출장: 과제 종료일 뒤 출국", "tripAbroad", dict(spend="2026-10-01", end="2026-09-30"), "불인정"),
+    ("전문가 자문: 과제 기간 내", "expert", dict(spend="2026-09-01", end="2026-12-31"), "인정"),
+    ("중기부: 위탁연구비 10% 증액, 승인 없음", "subcontract", dict(ministry="중소벤처기업부", increaseAny=True), "불인정"),
+    ("과기정통부: 위탁연구비 10% 증액은 통보·자율", "subcontract", dict(increaseAny=False), "인정"),
+    ("에너지(기후부): 인건비계상률 10% 미만", "laborFee", dict(ministry="기후에너지환경부", under10=True), "판단필요"),
+    ("과기정통부: 인건비계상률 10% 미만은 무관", "laborFee", dict(under10=True), "인정"),
+    ("환경(기후부): 계획 외 4천만 원 장비, 승인 없음", "equipment", dict(ministry="기후에너지환경부", amount=40000000, inPlan=False), "불인정"),
+    ("복지부: 간접비 증액 승인 없음", "indirect", dict(ministry="보건복지부", increase=True), "불인정"),
+    ("과기정통부 집단연구: 간접비 발의 확인", "indirect", dict(groupResearch=True), "판단필요"),
     ("회의비: 외부인 참석, 1인 3만 원", "meeting", dict(amount=120000, people=4), "인정"),
     ("회의비: 참여연구자끼리 식사", "meeting", dict(amount=120000, people=4, onlyOwn=True), "불인정"),
     ("회의비: 같은 기관 비참여자 포함(국가R&D)", "meeting", dict(amount=120000, people=4, noOutside=True), "인정"),

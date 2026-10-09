@@ -26,6 +26,11 @@ def load_text():
     return {doc_name(k): v for k, v in load_pages().items()}
 
 
+def load_regs():
+    """부처 소관 규정(법제처 수집본, crawl_regs): 부처별 규칙의 근거 인용에만 사용"""
+    return {re.sub(r"\(\d{8}\)$", "", f.stem): json.loads(f.read_text(encoding="utf-8")) for f in sorted((DATA / "text_regs").glob("*.json"))}
+
+
 def excerpt(pages, page, hint, find=None):
     pg = next((p for p in pages if p["page"] == page), None)
     if not pg:
@@ -36,7 +41,12 @@ def excerpt(pages, page, hint, find=None):
             assert pg, f"발췌 문자열 없음: {find} (p{page})"
             print(f"  쪽 보정: '{find[:20]}' p{page} → p{pg['page']}")
         i = pg["text"].find(find)
-        return re.sub(r"\s*\n\s*", " ", pg["text"][pg["text"].rfind("\n", 0, i) + 1:])[:420]
+        start = pg["text"].rfind("\n", 0, i) + 1
+        if i - start > 200:  # 줄바꿈 없는 법제처 본문: 찾은 항·호부터 다음 항·조 전까지
+            t = pg["text"][i:]
+            end = re.search(r"(?<=.{10})(?:[①-⑳]|제\d+조(?:의\d+)?\(|(?<=[가-힣)])\d{1,2}\.\s?(?=[가-힣]))", t)
+            return t[:end.start() if end else 420][:420]
+        return re.sub(r"\s*\n\s*", " ", pg["text"][start:])[:420]
     paras = [x for x in re.split(r"\n(?=\s*(?:[-➊➋➌➍➎➏①②③④⑤⑥⑦⑧∙•※]|\d+\.|제\d+조|[가-하]\.))", pg["text"]) if len(x) > 20]
     h = grams(hint)
     best = max(paras, key=lambda x: len(grams(x) & h) / len(grams(x)) ** 0.5, default="")  # 짧고 밀도 높은 문단 우선
@@ -111,7 +121,7 @@ def validate(rules, cases):
 
 
 if __name__ == "__main__":
-    texts = load_text()
+    texts, regs = load_text(), load_regs()
     rules = json.loads((DATA / "rules.json").read_text(encoding="utf-8"))
     cases = json.loads((DATA / "cases.json").read_text(encoding="utf-8"))
     # IRIS 연구수행문의는 상세 화면에서 '공개'를 확인하며 전문기관을 기록한 글만 게시(목록 코드만으로는 비공개글이 섞일 수 있음)
@@ -119,7 +129,7 @@ if __name__ == "__main__":
     for r in rules["rules"]:
         for c in [r["base"]] + r["checks"] + r["agree"]:
             for g in c["근거"]:
-                pages = find_doc(texts, g["문서"])
+                pages = find_doc(texts, g["문서"]) if g.get("출처") != "법제처" else find_doc(regs, g["문서"])
                 assert pages, f"문서 없음: {g['문서']}"
                 g["발췌"] = excerpt(pages, g["쪽"], g["조항"] + " " + c.get("사유", c.get("내용", "")), g.get("find"))
                 if g.get("find") and not any(p["page"] == g["쪽"] and g["find"] in p["text"] for p in pages):
@@ -129,7 +139,7 @@ if __name__ == "__main__":
     ALL = {t["id"] for t in rules["tracks"]}
     for r in rules["rules"]:
         for q in r["questions"]:
-            ts = set()
+            ts, ms = set(), set()  # ms: 특정 부처에서만 쓰는 질문이면 그 부처들, 하나라도 부처 무관이면 None
             for c in r["checks"] + r["agree"]:
                 if any(k == q["id"] for k, _, _ in c["when"]):
                     t = ALL.copy()
@@ -137,8 +147,12 @@ if __name__ == "__main__":
                         if k == "track":
                             t &= {v} if op == "==" else ALL - {v}
                     ts |= t
+                    only = [v for k, op, v in c["when"] if k == "ministry" and op == "=="]
+                    ms = ms | set(only) if ms is not None and only else None
             assert ts, f"쓰이지 않는 질문: {r['id']}.{q['id']}"
             q["tracks"] = sorted(ts)
+            if ms:
+                q["ministries"] = sorted(ms)
     # 공개 사이트: POSTECH 내규는 조항 번호와 요지만 (전문은 학내 규정집)
     gist = lambda t: t if len(t) <= 200 else t[:200].rstrip() + "… (전문은 POSTECH 규정집 참고)"
     for c in cases:
