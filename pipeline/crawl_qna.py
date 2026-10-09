@@ -42,7 +42,9 @@ def scrub(t):
     sents = re.split(r"(?<=[.!?])\s+|\n", t)
     drop = lambda x: (re.search(r"\[전화\]|\[이메일\]|(?<!\d)\d{4}(?:~\d)?(?:,\s*\d{4})+|연락\s?(?:주|부탁|바랍|하시)|(?:문의|연락)(?:해|하여)?\s?주시|문의\s?(?:바랍|부탁|하시기|주십|드리)", x)
                       or re.search(r"[가-힣]{2,4}\s?" + TITLE + r"\s?(?:입니다|이며|\()", x)
-                      or re.search(r"(?:담당자|실|팀)\s+[가-힣]{2,4}\s*\(", x))
+                      or re.search(r"(?:담당자|실|팀)\s+[가-힣]{2,4}\s*\(", x)
+                      or re.fullmatch(r"\s*(?:[가-힣A-Za-z]+(?:실|팀|부|센터)\s+)?[가-힣]{2,4}(?<![다요함음됨임까])(?:\s?드림)?\s*", x)  # 서명 줄(이름만)
+                      or (len(x) <= 50 and re.search(r"(?:실|팀|부|센터|평가원|담당자)(?:에|의)?\s*[가-힣]{2,4}\s?입니다", x)))
     t = "\n".join(x for x in sents if x.strip() and not drop(x))
     return re.sub(r"[ \t]+", " ", re.sub(r"\n\s*\n+", "\n", t)).strip()
 
