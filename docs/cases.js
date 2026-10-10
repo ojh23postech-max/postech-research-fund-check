@@ -8,7 +8,8 @@ const VS = ["인정", "불인정", "판단필요", "참고"];
 const SRC = ["참고자료", "NRF", "IRIS", "전문기관"];
 const SRC_NAME = { 참고자료: "사례집·매뉴얼", NRF: "연구재단", IRIS: "IRIS", 전문기관: "전문기관" };
 // 부처 칩은 줄임말로 보여 주고 전체 이름은 풀이(title)로
-const MSHORT = { 과학기술정보통신부: "과기정통부", 교육부: "교육부", 산업통상부: "산업부", 농림축산식품부: "농식품부", 중소벤처기업부: "중기부", 기후에너지환경부: "기후에너지환경부", 보건복지부: "복지부", 국토교통부: "국토부" };
+const MSHORT = { 과학기술정보통신부: "과기정통부", 교육부: "교육부", 산업통상부: "산업부", 농림축산식품부: "농식품부", 중소벤처기업부: "중기부", 기후에너지환경부: "기후에너지환경부", 보건복지부: "복지부", 국토교통부: "국토부", 해양수산부: "해수부" };
+const MAIN = ["과학기술정보통신부", "교육부", "산업통상부", "중소벤처기업부", "보건복지부", "기후에너지환경부", "국토교통부", "해양수산부", "농림축산식품부"];
 const VDESC = { 인정: "집행할 수 있다고 본 사례", 불인정: "집행할 수 없거나 환수·제재된 사례", 판단필요: "조건·사실관계에 따라 달라지는 사례", 참고: "제도·절차 안내" };
 
 let C = [], MS = [], st = { q: "", v: new Set(), s: new Set(), b: "", m: "", sort: "rel" }, hits = [], shown = 0, cur = null;
@@ -17,7 +18,8 @@ fetch("data.json", { cache: "no-cache" }).then((r) => r.json()).then((d) => {
   C = d.cases.filter((c) => c.유형 !== "규정조항"); // 내규 조항은 빼고 사례만
   C.forEach((c) => { c.lt = c.제목.toLowerCase(); c.lb = (c.답변 + " " + c.비목 + " " + c.출처).toLowerCase(); c.g = grams(c.제목 + " " + c.답변.slice(0, 160)); });
   $("#meta").textContent = `사례 ${C.length.toLocaleString()}건 · 갱신 ${d.meta.기준일}`;
-  MS = [...new Set(C.flatMap((c) => c.부처).filter((m) => m !== "공통"))];
+  // 점검 화면의 주요 부처(전문기관이 있는 곳)는 전용 사례가 없어도 늘 보여 줌 + 사례에 붙은 그 밖의 부처
+  MS = [...new Set([...MAIN, ...C.flatMap((c) => c.부처).filter((m) => m !== "공통")])];
   fromHash();
   apply();
   addEventListener("hashchange", fromHash);
@@ -58,8 +60,9 @@ function apply() {
   }
   // 칩·목차 숫자
   const mb = base("m"), mc = Object.fromEntries(MS.map((m) => [m, mb.filter((c) => c.부처.includes(m) || c.부처.includes("공통")).length]));
+  const own = new Set(C.flatMap((c) => c.부처)); // 전용 사례가 있는 부처
   $("#mChips").innerHTML = `<button type="button" data-m="" aria-pressed="${!st.m}">전체 <b>${mb.length.toLocaleString()}</b></button>` +
-    MS.sort((a, b) => mc[b] - mc[a]).map((m) => `<button type="button" data-m="${esc(m)}" aria-pressed="${st.m === m}" title="${esc(m)}">${esc(MSHORT[m] || m)} <b>${mc[m].toLocaleString()}</b></button>`).join("");
+    MS.map((m) => `<button type="button" data-m="${esc(m)}" aria-pressed="${st.m === m}"${own.has(m) ? ` title="${esc(m)}"` : ` class="only-common" title="${esc(m)}: 아직 이 부처 전용 사례가 없어 국가R&D 공통 사례만 보여 줍니다"`}>${esc(MSHORT[m] || m)} <b>${mc[m].toLocaleString()}</b></button>`).join("");
   const vc = count(base("v"), "판정"), sc = count(base("s"), "출처구분"), bc = count(base("b"), "비목");
   $("#vChips").innerHTML = VS.map((v) => `<button type="button" data-v="${v}" aria-pressed="${st.v.has(v)}" title="${VDESC[v]}">${tag(v)}<b>${(vc[v] || 0).toLocaleString()}</b></button>`).join("");
   $("#sChips").innerHTML = SRC.map((s) => `<button type="button" data-s="${s}" aria-pressed="${st.s.has(s)}">${SRC_NAME[s]} <b>${(sc[s] || 0).toLocaleString()}</b></button>`).join("");
@@ -103,7 +106,11 @@ function open(c, push = true) {
     <p class="dmeta">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기 ↗</a>` : esc(where(c.출처, c.쪽)) + " · " + esc(c.유형)}${c.일자 ? ` · ${c.원문URL ? "작성 " : ""}${esc(c.일자)}` : ""}${c.답변일 ? ` · 답변 ${esc(c.답변일)}` : ""} · 적용: ${esc(c.부처.join(", "))}</p>
     <section class="dwhy" data-v="${c.판정}"><b>${c.판정 === "참고" ? "참고 사례" : `${c.판정} 판정 이유`}</b><p>${esc(why)}</p></section>
     <div class="dbody">${mark(c.답변, ws)}</div>
-    ${rel.length ? `<h3 class="drel">같은 비목의 비슷한 사례</h3><ul class="rel">${rel.map((x) => `<li><button type="button" data-id="${esc(x.id)}">${tag(x.판정)}<span>${esc(x.제목)}</span></button></li>`).join("")}</ul>` : ""}
+    ${rel.length ? `<h3 class="drel">같은 비목의 비슷한 사례</h3><ul class="rel">${rel.map((x) => `<li><details><summary>${tag(x.판정)}<span>${esc(x.제목)}</span></summary>
+      <div class="relbody"><p class="dmeta">${esc(x.출처)} · ${x.원문URL ? `<a href="${esc(x.원문URL)}" target="_blank" rel="noopener">원문 보기 ↗</a>` : esc(where(x.출처, x.쪽))}${x.일자 ? ` · ${esc(x.일자)}` : ""}</p>
+      <section class="dwhy" data-v="${x.판정}"><b>${x.판정 === "참고" ? "참고 사례" : `${x.판정} 판정 이유`}</b><p>${esc(x.판정근거.replace(/^검수: /, ""))}</p></section>
+      <div class="dbody">${esc(x.답변)}</div>
+      <button type="button" class="copy" data-id="${esc(x.id)}">이 사례를 본문으로 열기</button></div></details></li>`).join("")}</ul>` : ""}
     <p class="dnote">판정은 공개 답변을 검수해 붙인 것입니다. 원문과 다르면 연구지원팀에 알려 주세요. <button type="button" class="copy" id="copy">링크 복사</button></p>`;
   $("#doc").scrollTop = 0;
   if (push) history.replaceState(null, "", `#c=${encodeURIComponent(c.id)}`);
@@ -121,7 +128,7 @@ $("#sort").addEventListener("change", () => { st.sort = $("#sort").value; apply(
 $("#reset").addEventListener("click", () => { st = { q: "", v: new Set(), s: new Set(), b: "", m: "", sort: "rel" }; $("#q").value = ""; $("#sort").value = "rel"; apply(); });
 $("#list").addEventListener("click", (e) => { if (e.target.id === "moreBtn") return more(); const b = e.target.closest("[data-id]"); if (b) open(C.find((c) => c.id === b.dataset.id)); });
 $("#doc").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-id]"); if (b) return open(C.find((c) => c.id === b.dataset.id));
+  const b = e.target.closest("button[data-id]"); if (b) return open(C.find((c) => c.id === b.dataset.id));
   if (e.target.id === "copy") { navigator.clipboard?.writeText(location.href).then(() => (e.target.textContent = "복사됨"), () => {}); }
 });
 // 키보드: ↑↓로 목록 이동

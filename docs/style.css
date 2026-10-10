@@ -254,6 +254,8 @@ dialog .x { position: absolute; top: .9rem; right: 1rem; width: 2.2rem; height: 
 .mchips button:hover { background: var(--fill-hover); }
 .mchips button[aria-pressed="true"] { border-color: var(--blue); background: #fff; color: var(--ink); }
 .mchips b { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--ink); }
+.mchips .only-common { color: var(--ink-3); }
+.mchips .only-common b { color: var(--ink-3); font-weight: 600; }
 .whint { font-size: .74rem; font-weight: 500; color: var(--ink-3); }
 .wrow { display: grid; grid-template-columns: 1fr; gap: .5rem; margin-top: .3rem; }
 .toc { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
@@ -292,9 +294,18 @@ dialog .x { position: absolute; top: .9rem; right: 1rem; width: 2.2rem; height: 
 .dbody { white-space: pre-line; font-size: .96rem; line-height: 1.8; color: var(--ink-2); }
 .drel { font-size: .95rem; margin: 1.6rem 0 .5rem; }
 .rel { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
-.rel button { width: 100%; border: 0; background: var(--fill); border-radius: var(--r-sm); padding: .5rem .7rem; display: flex; gap: .5rem; align-items: center; text-align: left; font-size: .88rem; }
-.rel button:hover { background: var(--fill-hover); }
-.rel span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel details { background: var(--fill); border-radius: var(--r-sm); }
+.rel summary { list-style: none; cursor: pointer; padding: .5rem .7rem; display: flex; gap: .5rem; align-items: center; font-size: .88rem; border-radius: var(--r-sm); }
+.rel summary::-webkit-details-marker { display: none; }
+.rel summary::after { content: "펼치기"; margin-left: auto; flex: none; font-size: .76rem; color: var(--ink-3); }
+.rel details[open] summary::after { content: "접기"; }
+.rel summary:hover { background: var(--fill-hover); }
+.rel summary span:not(.tag) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.rel details[open] summary span:not(.tag) { white-space: normal; font-weight: 700; }
+.rel details[open] { background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.relbody { padding: .2rem .9rem .9rem; }
+.relbody .dbody { font-size: .9rem; }
+.relbody .copy { margin: .8rem 0 0; }
 .dnote { margin-top: 1.4rem; font-size: .8rem; color: var(--ink-3); }
 .copy { border: 0; background: var(--fill); border-radius: 999px; padding: .2rem .7rem; font-size: .78rem; color: var(--ink-2); margin-left: .3rem; }
 @media (max-width: 1080px) {
