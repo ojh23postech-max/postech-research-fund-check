@@ -178,6 +178,12 @@ legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; ma
 .dist { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin-bottom: .7rem; }
 .dist button { border: 2px solid transparent; background: var(--fill); border-radius: var(--r-sm); padding: .5rem .65rem; text-align: left; display: flex; justify-content: space-between; align-items: center; transition: background .15s; }
 .dist button:hover { background: var(--fill-hover); }
+.dist.s3 { grid-template-columns: repeat(3, 1fr); }
+.dist.s3 button span { font-size: .84rem; font-weight: 600; color: var(--ink-2); }
+.src-tag.reg { color: var(--blue); background: var(--blue-weak); font-weight: 700; }
+.cards mark { background: #fff3bf; color: inherit; border-radius: 3px; padding: 0 1px; }
+.rel-items { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .4rem; }
+.rel-items button { border: 0; background: var(--blue-weak); color: #1b64da; border-radius: 999px; padding: .25rem .7rem; font-size: .82rem; font-weight: 600; cursor: pointer; }
 .dist button b { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dist button[aria-pressed="true"] { border-color: var(--blue); background: #fff; }
 .cards { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .45rem; overflow: hidden; }
