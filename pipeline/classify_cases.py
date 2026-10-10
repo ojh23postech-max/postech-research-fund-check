@@ -209,6 +209,75 @@ def extract():
     return out
 
 
+# 산업부 운영요령 [별표 6] 항목별 회수 기준 예시 → 산업부 불인정 사례 (공통 운영요령이 혁신법보다 우선 적용)
+SECTION = {"인건비": "인건비", "학생인건비": "학생인건비", "연구시설.장비비": "연구시설·장비비", "연구시설·장비비": "연구시설·장비비",
+           "연구재료비": "연구재료비", "연구수당": "연구수당", "간접비": "간접비", "위탁연구개발비": "위탁·공동연구"}
+
+
+def motie_recovery():
+    f = next(TEXT.glob("*산업기술혁신사업*.json"))
+    name = doc_name(f.stem)
+    pages = json.loads(f.read_text(encoding="utf-8"))
+    on, skip, sec, out = False, False, "공통사항", []
+    cur = None  # [쪽, 비목구역, 번호, 본문, 하위항목들]
+    items = []
+    for pg in pages:
+        for ln in pg["text"].split("\n"):
+            if "[별표 6]" in ln:
+                on = True; continue
+            if "[별표 7]" in ln:
+                on = False
+            if not on:
+                continue
+            if re.search(r"[\u4e00-\u9fff]", ln):  # HWP 표 조각(깨진 한자) → 표가 끝날 때까지 건너뜀
+                skip = True; continue
+            t = ln.strip()
+            m = re.fullmatch(r"\[\s*([^\]]+?)\s*\]", t)
+            if m:
+                sec, skip = m.group(1), False; continue
+            if t in ("", "구분", "주요내용", "직접비", "간접비", "공통사항", "<예외사례>"):
+                if t == "<예외사례>": skip = True
+                continue
+            mn, ms = re.match(r"(\d{1,2})\.\s*(.+)", t), re.match(r"([가-하])\.\s*(.+)", t)
+            if mn:
+                skip = False
+                cur = [pg["page"], sec, mn.group(1), mn.group(2), []]; items.append(cur); continue
+            if ms and cur:
+                skip = False
+                cur[4].append([pg["page"], ms.group(1), ms.group(2)]); continue
+            if t.startswith("※"):
+                skip = False  # 표 뒤 ※ 주석은 다시 본문
+            if skip or not cur:
+                continue
+            if cur[4]: cur[4][-1][2] += "\n" + t   # ※·단서·① 등은 바로 앞 항목에 붙임
+            else: cur[3] += "\n" + t
+    for page, sec, no, head, subs in items:
+        # 하위 목이 기한·산식 같은 세부 설명이면(“가. …: 종료일 1개월 전”, ※ 뒤 계산법) 따로 떼지 않고 본 항목에 합침
+        if subs and (any(re.search(r"[:：]", body.split("\n")[0]) for _, _, body in subs) or head.rstrip().split("\n")[-1].lstrip().startswith("※")):
+            head += "".join(f"\n{k}. {body}" for _, k, body in subs); subs = []
+        exc = bool(subs) and bool(re.search(r"각\s?목.{0,15}예외", head))  # “다음 각 목의 경우는 예외로 함” → 하위 목은 회수하지 않는(인정) 경우
+        rows = [(pg_, f"{no}.{k}", f"{head}\n{k}. {body}", body) for pg_, k, body in subs] or [(page, no, head, head)]
+        for pg_, code, text, core in rows:
+            title = re.split(r"\n|(?<=다)\.\s", core)[0].strip()
+            key = "motie-" + hashlib.md5((sec + code + re.sub(r"\s", "", core)[:60]).encode()).hexdigest()[:10]
+            if sec == "연구활동비":  # 상위 항목 제목으로 세목을 정함(식대 → 회의비, 출장 → 여비)
+                h0 = head.split("\n")[0]
+                b = ("연구활동비-회의비" if re.search(r"식대|^회의비", h0) else "연구활동비-여비" if re.search(r"출장|여비", h0)
+                     else bimok(core) if bimok(core).startswith("연구활동비") else "연구활동비-기타")
+            else:
+                b = SECTION.get(sec) or (bimok(core) if code != no else "인건비" if "인건비계상률" in core else "일반·제도")
+            ok = exc or re.search(r"인정\s*$", core.split("\n")[0])
+            v, why = ("인정", f"산업부 운영요령 별표6 회수 예외({sec} {code})") if ok else ("불인정", f"산업부 운영요령 별표6 회수 기준({sec} {code})")
+            out.append({
+                "id": key, "출처구분": "참고자료", "출처": name, "쪽": pg_, "유형": "회수기준",
+                "제목": f"[{sec}] {title}"[:160], "질의": title,
+                "답변": f"산업기술혁신사업 연구개발비 항목별 회수 기준 예시 [별표 6] {sec} {code}\n{text}\n\n"
+                        + ("회수하지 않는(인정) 경우로 정한 항목입니다." if ok else "이에 해당하는 금액은 회수(불인정) 대상입니다. 단서·예외로 적힌 경우는 인정될 수 있습니다."),
+                "비목": b, "판정": v, "판정근거": why,
+            })
+    return out
+
+
 def check():
     assert verdict("불가합니다. 연구개발비로 집행할 수 없습니다.", "Q&A")[0] == "불인정"
     assert verdict("가능합니다.", "Q&A")[0] == "인정"
@@ -232,6 +301,7 @@ def rescrub(c):
 if __name__ == "__main__":
     check()
     cases = extract()
+    cases += motie_recovery()
     # 게시판(IRIS/NRF) 수집분: 분류 기준이 바뀌어도 반영되도록 다시 판정
     board = ROOT / "data" / "board_cases.json"
     if board.exists():

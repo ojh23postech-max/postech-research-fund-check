@@ -265,6 +265,7 @@ dialog .x { position: absolute; top: .9rem; right: 1rem; width: 2.2rem; height: 
 .toc b { font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .whead { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .7rem; }
 .whead h2 { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em; }
+.wnote { margin: -.3rem 0 .7rem; font-size: .8rem; color: var(--ink-2); background: var(--blue-weak); border-radius: var(--r-sm); padding: .5rem .7rem; line-height: 1.5; }
 .wcount { color: var(--ink-3); font-size: .84rem; font-variant-numeric: tabular-nums; }
 .entries { list-style: none; margin: 0 -.3rem; padding: 0 .3rem; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: .45rem; }
 .entries li > button { width: 100%; text-align: left; border: 1px solid var(--line); background: #fff; border-radius: var(--r-md); padding: .65rem .8rem; display: grid; gap: .22rem; transition: border-color .15s, box-shadow .15s; }

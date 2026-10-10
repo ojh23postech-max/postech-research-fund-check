@@ -4,6 +4,19 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const tag = (v) => `<span class="tag" data-v="${v}">${v}</span>`;
 const grams = (s) => { s = s.replace(/\s+/g, ""); const g = new Set(); for (let i = 0; i < s.length - 1; i++) g.add(s.slice(i, i + 2)); return g; };
 const where = (doc, p) => (/산업기술혁신|운영요령/.test(doc) && !/POSTECH/.test(doc) ? `HWP 원문 ${p}구간` : `PDF ${p}쪽`);
+// 원문 보기: 게시판 글은 원문 주소, 공개 정부 자료는 사이트에 올린 PDF의 해당 쪽, 운영요령은 법제처. POSTECH 내규는 규정집 안내
+const PDFS = [["NRF 정부연구비 사용 Q&A 사례집", "nrf-qa-casebook-2026.pdf"], ["KEITI 환경기술개발사업", "keiti-qa-casebook-2025-12.pdf"], ["국가연구개발혁신법 매뉴얼", "rnd-act-manual-2026-07.pdf"],
+  ["학생인건비 통합관리", "student-pay-manual-2026-07.pdf"], ["농기평 연구비 FAQ", "ipet-faq-2024h2.pdf"], ["기술료제도 매뉴얼", "royalty-manual-2026.pdf"],
+  ["제재처분 가이드라인", "sanction-guide-2026.pdf"], ["연구시설·장비비 통합관리", "equipment-manual-2026.pdf"]];
+const LAWURL = "https://www.law.go.kr/행정규칙/산업기술혁신사업 공통 운영요령";
+const ext = (u, t) => `<a href="${esc(u)}" target="_blank" rel="noopener">${t} ↗</a>`;
+function srcLink(doc, page, url) {
+  if (url) return ext(url, "원문 보기");
+  const f = PDFS.find(([k]) => doc.startsWith(k) || doc.includes(k));
+  if (f && page) return ext(`src/${f[1]}#page=${page}`, `원문 보기 (PDF ${page}쪽)`);
+  if (/산업기술혁신사업|운영요령/.test(doc) && !/POSTECH/.test(doc)) return ext(LAWURL, "원문 보기 (법제처)") + (page ? ` · HWP ${page}구간` : "");
+  return esc(where(doc, page)) + (/^POSTECH/.test(doc) ? " · 전문은 POSTECH 규정집" : "");
+}
 const VS = ["인정", "불인정", "판단필요", "참고"];
 const SRC = ["참고자료", "NRF", "IRIS", "전문기관"];
 const SRC_NAME = { 참고자료: "사례집·매뉴얼", NRF: "연구재단", IRIS: "IRIS", 전문기관: "전문기관" };
@@ -56,7 +69,9 @@ function apply() {
   else if (st.sort === "old") hits.sort((a, b) => (a.일자 || "9").localeCompare(b.일자 || "9"));
   else {
     const sc = (c) => ws.reduce((a, w) => a + n(c.lt, w) * 3 + Math.min(n(c.lb, w), 3), 0);
-    hits = hits.map((c) => [sc(c), c]).sort((a, b) => b[0] - a[0] || rk(a[1]) - rk(b[1]) || official(a[1]) - official(b[1]) || (b[1].일자 || "").localeCompare(a[1].일자 || "")).map(([, c]) => c);
+    // 부처를 고르면 그 부처 전용 기준(예: 산업부 공통 운영요령)을 먼저, 거기 없는 사항은 혁신법 공통 사례를 뒤에
+    const own = (c) => (st.m && c.부처.includes(st.m) ? 0 : 1);
+    hits = hits.map((c) => [sc(c), c]).sort((a, b) => b[0] - a[0] || own(a[1]) - own(b[1]) || rk(a[1]) - rk(b[1]) || official(a[1]) - official(b[1]) || (b[1].일자 || "").localeCompare(a[1].일자 || "")).map(([, c]) => c);
   }
   // 칩·목차 숫자
   const mb = base("m"), mc = Object.fromEntries(MS.map((m) => [m, mb.filter((c) => c.부처.includes(m) || c.부처.includes("공통")).length]));
@@ -71,6 +86,11 @@ function apply() {
     bs.map(([b, k]) => `<li><button type="button" data-b="${esc(b)}" aria-current="${st.b === b}">${esc(b)} <b>${k.toLocaleString()}</b></button></li>`).join("");
   $("#listTitle").textContent = [st.b || "전체 사례", st.v.size ? [...st.v].join("·") : ""].filter(Boolean).join(" · ");
   $("#count").textContent = `${hits.length.toLocaleString()}건`;
+  const nOwn = st.m ? hits.filter((c) => c.부처.includes(st.m)).length : 0;
+  $("#note").hidden = !st.m;
+  $("#note").textContent = !st.m ? "" : st.m === "산업통상부"
+    ? `산업부 과제는 산업기술혁신사업 공통 운영요령이 먼저 적용되고, 운영요령에 없는 사항은 혁신법을 따릅니다. 운영요령 기준 ${nOwn}건을 먼저, 혁신법 공통 사례를 그다음에 보여 드려요.`
+    : nOwn ? `${st.m} 전용 사례 ${nOwn}건을 먼저, 혁신법 공통 사례를 그다음에 보여 드려요.` : `${st.m} 전용 사례가 아직 없어 혁신법 공통 사례만 보여 드려요.`;
   shown = 0; $("#list").innerHTML = ""; more();
   $("#list").scrollTop = 0;
 }
@@ -103,11 +123,11 @@ function open(c, push = true) {
   const why = c.판정근거.replace(/^검수: /, "");
   $("#doc").innerHTML = `<div class="dhead">${tag(c.판정)}<span class="src-tag">${esc(c.출처)}</span><span class="src-tag">${esc(c.비목)}</span></div>
     <h2 class="dtitle">${mark(c.제목, ws)}</h2>
-    <p class="dmeta">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기 ↗</a>` : esc(where(c.출처, c.쪽)) + " · " + esc(c.유형)}${c.일자 ? ` · ${c.원문URL ? "작성 " : ""}${esc(c.일자)}` : ""}${c.답변일 ? ` · 답변 ${esc(c.답변일)}` : ""} · 적용: ${esc(c.부처.join(", "))}</p>
+    <p class="dmeta">${srcLink(c.출처, c.쪽, c.원문URL)}${c.원문URL ? "" : " · " + esc(c.유형)}${c.일자 ? ` · ${c.원문URL ? "작성 " : ""}${esc(c.일자)}` : ""}${c.답변일 ? ` · 답변 ${esc(c.답변일)}` : ""} · 적용: ${esc(c.부처.join(", "))}</p>
     <section class="dwhy" data-v="${c.판정}"><b>${c.판정 === "참고" ? "참고 사례" : `${c.판정} 판정 이유`}</b><p>${esc(why)}</p></section>
     <div class="dbody">${mark(c.답변, ws)}</div>
     ${rel.length ? `<h3 class="drel">같은 비목의 비슷한 사례</h3><ul class="rel">${rel.map((x) => `<li><details><summary>${tag(x.판정)}<span>${esc(x.제목)}</span></summary>
-      <div class="relbody"><p class="dmeta">${esc(x.출처)} · ${x.원문URL ? `<a href="${esc(x.원문URL)}" target="_blank" rel="noopener">원문 보기 ↗</a>` : esc(where(x.출처, x.쪽))}${x.일자 ? ` · ${esc(x.일자)}` : ""}</p>
+      <div class="relbody"><p class="dmeta">${esc(x.출처)} · ${srcLink(x.출처, x.쪽, x.원문URL)}${x.일자 ? ` · ${esc(x.일자)}` : ""}</p>
       <section class="dwhy" data-v="${x.판정}"><b>${x.판정 === "참고" ? "참고 사례" : `${x.판정} 판정 이유`}</b><p>${esc(x.판정근거.replace(/^검수: /, ""))}</p></section>
       <div class="dbody">${esc(x.답변)}</div>
       <button type="button" class="copy" data-id="${esc(x.id)}">이 사례를 본문으로 열기</button></div></details></li>`).join("")}</ul>` : ""}

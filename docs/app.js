@@ -332,11 +332,25 @@ function drawCards() {
   $("#prev").disabled = page === 0; $("#next").disabled = page >= pages - 1;
 }
 
+// 원문 보기: 게시판 글은 원문 주소, 공개 정부 자료는 사이트에 올린 PDF의 해당 쪽, 운영요령은 법제처. POSTECH 내규는 규정집 안내
+const PDFS = [["NRF 정부연구비 사용 Q&A 사례집", "nrf-qa-casebook-2026.pdf"], ["KEITI 환경기술개발사업", "keiti-qa-casebook-2025-12.pdf"], ["국가연구개발혁신법 매뉴얼", "rnd-act-manual-2026-07.pdf"],
+  ["학생인건비 통합관리", "student-pay-manual-2026-07.pdf"], ["농기평 연구비 FAQ", "ipet-faq-2024h2.pdf"], ["기술료제도 매뉴얼", "royalty-manual-2026.pdf"],
+  ["제재처분 가이드라인", "sanction-guide-2026.pdf"], ["연구시설·장비비 통합관리", "equipment-manual-2026.pdf"]];
+const LAWURL = "https://www.law.go.kr/행정규칙/산업기술혁신사업 공통 운영요령";
+const ext = (u, t) => `<a href="${esc(u)}" target="_blank" rel="noopener">${t} ↗</a>`;
+function srcLink(doc, page, url) {
+  if (url) return ext(url, "원문 보기");
+  const f = PDFS.find(([k]) => doc.startsWith(k) || doc.includes(k));
+  if (f && page) return ext(`src/${f[1]}#page=${page}`, `원문 보기 (PDF ${page}쪽)`);
+  if (/산업기술혁신사업|운영요령/.test(doc) && !/POSTECH/.test(doc)) return ext(LAWURL, "원문 보기 (법제처)") + (page ? ` · HWP ${page}구간` : "");
+  return esc(where(doc, page)) + (/^POSTECH/.test(doc) ? " · 전문은 POSTECH 규정집" : "");
+}
+
 // 글 시점: 게시판은 작성일·답변일, 참고자료는 발간 시점
 const when = (c) => c.일자 ? ` · ${c.원문URL ? `작성 ${c.일자}${c.답변일 ? ` · 답변 ${c.답변일}` : ""}` : esc(c.일자)}` : (c.원문URL ? " · 작성일 미표기" : "");
 
 function showCase(c) {
-  openDlg(`<p>${tag(c.판정)} <span class="src-tag">${esc(c.출처)}</span> <span class="w">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기</a>` : `${where(c.출처, c.쪽)} · ${esc(c.유형)}`}${when(c)}</span></p>
+  openDlg(`<p>${tag(c.판정)} <span class="src-tag">${esc(c.출처)}</span> <span class="w">${srcLink(c.출처, c.쪽, c.원문URL)}${c.원문URL ? "" : ` · ${esc(c.유형)}`}${when(c)}</span></p>
     <h3>${esc(c.제목)}</h3><div class="body">${esc(c.답변)}</div>
     <p class="why">${c.자동 ? `자동 분류(키워드 “${esc(c.판정근거)}” 기준)입니다. 원문 답변으로 판단하세요.` : `${esc(c.판정근거.replace(/^검수: /, "판정 이유: "))}`}<br>판정이 원문과 다르면 연구지원팀에 알려 주세요. <a href="cases.html#c=${encodeURIComponent(c.id)}">사례 백과에서 보기 →</a></p>`);
 }
@@ -405,7 +419,7 @@ function renderLawTab(list) {
 }
 
 function showLaw(gs) {
-  openDlg(`<h3>근거 원문</h3><ul class="law">${gs.map((g) => `<li><span class="d">${esc(cite(g))}</span><q style="-webkit-line-clamp:unset">${esc(g.발췌)}</q></li>`).join("")}</ul>`);
+  openDlg(`<h3>근거 원문</h3><ul class="law">${gs.map((g) => `<li><span class="d">${esc(cite(g))}</span> <span class="w">${g.출처 === "법제처" ? "" : srcLink(g.문서, g.쪽)}</span><q style="-webkit-line-clamp:unset">${esc(g.발췌)}</q></li>`).join("")}</ul>`);
 }
 
 function openDlg(html) { $("#dlgBody").innerHTML = html; $("#dlg").showModal(); }
@@ -421,12 +435,12 @@ function tab(name) {
 let SX = null, sHits = [], sFilter = "all", sPage = 0;
 function searchIndex() {
   const regs = new Map();
-  D.cases.filter((c) => c.유형 === "규정조항").forEach((c) => regs.set(c.id, { k: "reg", id: c.id, 문서: c.출처, 제목: c.제목, 본문: c.답변, 위치: where(c.출처, c.쪽), 일자: c.일자 || "", items: [] }));
+  D.cases.filter((c) => c.유형 === "규정조항").forEach((c) => regs.set(c.id, { k: "reg", id: c.id, 문서: c.출처, 쪽: c.쪽, 제목: c.제목, 본문: c.답변, 위치: where(c.출처, c.쪽), 일자: c.일자 || "", items: [] }));
   // 판정 규칙의 근거(혁신법 매뉴얼·사용기준·부처 규정 등): 같은 문서·조항은 하나로 묶고 이 근거로 판정하는 항목을 함께 보여 줌
   D.rules.forEach((r) => [r.base, ...r.checks, ...r.agree].forEach((x) => x.근거.forEach((g) => {
     if (!g.발췌) return;
     const key = g.문서 + "|" + g.조항;
-    if (!regs.has(key)) regs.set(key, { k: "reg", id: key, 문서: g.문서, 제목: g.조항, 본문: g.발췌, 위치: g.출처 === "법제처" ? "법제처 현행" : where(g.문서, g.쪽), 일자: "", items: [] });
+    if (!regs.has(key)) regs.set(key, { k: "reg", id: key, 문서: g.문서, 쪽: g.쪽, 제목: g.조항, 본문: g.발췌, 위치: g.출처 === "법제처" ? "법제처 현행" : where(g.문서, g.쪽), 일자: "", items: [] });
     const e = regs.get(key); if (!e.items.includes(r)) e.items.push(r);
   })));
   const cases = D.cases.filter((c) => c.유형 !== "규정조항").map((c) => ({ k: "case", id: c.id, c, 제목: c.제목, 본문: c.답변 + " " + c.비목 + " " + c.출처 }));
@@ -470,7 +484,7 @@ function drawSearch() {
   $("#sPrev").disabled = sPage === 0; $("#sNext").disabled = sPage >= pages - 1;
 }
 function showReg(x) {
-  openDlg(`<p><span class="src-tag reg">규정</span> <span class="src-tag">${esc(x.문서)}</span> <span class="w">${esc(x.위치)}</span></p>
+  openDlg(`<p><span class="src-tag reg">규정</span> <span class="src-tag">${esc(x.문서)}</span> <span class="w">${x.위치 === "법제처 현행" ? esc(x.위치) : srcLink(x.문서, x.쪽)}</span></p>
     <h3>${esc(x.제목)}</h3><div class="body">${esc(x.본문)}</div>
     ${x.items.length ? `<p class="why">이 규정으로 판정하는 항목 (누르면 바로 점검)</p><div class="rel-items">${x.items.map((r) => `<button type="button" data-rule="${r.id}">${esc(r.항목)}</button>`).join("")}</div>` : /^POSTECH/.test(x.문서) ? `<p class="why">POSTECH 내규는 조항 요지만 싣습니다. 전문은 POSTECH 규정집을 확인하세요.</p>` : ""}`);
 }

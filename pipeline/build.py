@@ -23,10 +23,36 @@ def ymd(t):
     return f"{m[1]}-{int(m[2]):02d}-{int(m[3]):02d}" if m else ""
 
 
+# 원문 보기: 공개 정부 자료는 docs/src/ 의 PDF 해당 쪽, 운영요령(HWP)은 법제처. POSTECH 내규는 공개하지 않음
+PDF = {
+    "NRF 정부연구비 사용 Q&A 사례집": "nrf-qa-casebook-2026.pdf",
+    "KEITI 환경기술개발사업": "keiti-qa-casebook-2025-12.pdf",
+    "국가연구개발혁신법 매뉴얼": "rnd-act-manual-2026-07.pdf",
+    "학생인건비 통합관리 매뉴얼": "student-pay-manual-2026-07.pdf",
+    "농기평 연구비 FAQ": "ipet-faq-2024h2.pdf",
+    "기술료제도 매뉴얼": "royalty-manual-2026.pdf",
+    "제재처분 가이드라인": "sanction-guide-2026.pdf",
+    "연구시설·장비비 통합관리 매뉴얼": "equipment-manual-2026.pdf",
+}
+LAW = {"산업기술혁신사업 공통 운영요령": "https://www.law.go.kr/행정규칙/산업기술혁신사업 공통 운영요령"}
+
+
+def srclink(c):
+    if c.get("원문URL") or c["출처구분"] != "참고자료":
+        return {}
+    f = next((v for k, v in PDF.items() if c["출처"].startswith(k)), None)
+    if f and c.get("쪽"):
+        return {"원문PDF": f"src/{f}#page={c['쪽']}"}
+    u = next((v for k, v in LAW.items() if c["출처"].startswith(k)), None)
+    return {"원문법령": u} if u else {}
+
+
 def dated(c):
     """게시판 글은 작성일(·답변일), 참고자료는 발간 시점"""
     if c["출처구분"] == "참고자료":
         m = re.search(r"\((\d{4})(?:\.(\d{1,2}))?([^)]*)\)", c["출처"])
+        if not m and (g := re.search(r"고시\s*(\d{4})-\d+", c["출처"])):
+            return {"일자": f"{g[1]} 고시"}
         return {"일자": f"{m[1]}" + (f"-{int(m[2]):02d}" if m[2] else "") + m[3] + " 발간"} if m else {}
     d = {"일자": ymd(c.get("작성일"))} if ymd(c.get("작성일")) else {}
     return d | ({"답변일": ymd(c["답변일"])} if ymd(c.get("답변일")) else {})
@@ -183,7 +209,7 @@ if __name__ == "__main__":
     docs = sorted({c["출처"] for c in cases} | set(texts))
     meta = {"기준일": date.today().isoformat(), "문서": docs,
             "사례수": len(cases), "게시판수": sum(c["출처구분"] != "참고자료" for c in cases)}
-    slim = [{k: c[k] for k in ("id", "출처구분", "출처", "쪽", "유형", "제목", "답변", "비목", "판정", "판정근거")} | {"부처": c.get("부처", ["공통"])} | ({"원문URL": c["원문URL"]} if c.get("원문URL") else {}) | ({"자동": 1} if c.get("자동") else {}) | dated(c) for c in cases]
+    slim = [{k: c[k] for k in ("id", "출처구분", "출처", "쪽", "유형", "제목", "답변", "비목", "판정", "판정근거")} | {"부처": c.get("부처", ["공통"])} | ({"원문URL": c["원문URL"]} if c.get("원문URL") else {}) | ({"자동": 1} if c.get("자동") else {}) | dated(c) | srclink(c) for c in cases]
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps({"meta": meta, "tracks": rules["tracks"], "ministries": ministries, "rules": rules["rules"], "cases": slim}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     from collections import Counter
