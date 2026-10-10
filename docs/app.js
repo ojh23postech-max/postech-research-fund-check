@@ -338,7 +338,7 @@ const when = (c) => c.일자 ? ` · ${c.원문URL ? `작성 ${c.일자}${c.답�
 function showCase(c) {
   openDlg(`<p>${tag(c.판정)} <span class="src-tag">${esc(c.출처)}</span> <span class="w">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기</a>` : `${where(c.출처, c.쪽)} · ${esc(c.유형)}`}${when(c)}</span></p>
     <h3>${esc(c.제목)}</h3><div class="body">${esc(c.답변)}</div>
-    <p class="why">${c.자동 ? `자동 분류(키워드 “${esc(c.판정근거)}” 기준)입니다. 원문 답변으로 판단하세요.` : `${esc(c.판정근거.replace(/^검수: /, "판정 이유: "))}`}<br>판정이 원문과 다르면 연구지원팀에 알려 주세요.</p>`);
+    <p class="why">${c.자동 ? `자동 분류(키워드 “${esc(c.판정근거)}” 기준)입니다. 원문 답변으로 판단하세요.` : `${esc(c.판정근거.replace(/^검수: /, "판정 이유: "))}`}<br>판정이 원문과 다르면 연구지원팀에 알려 주세요. <a href="cases.html#c=${encodeURIComponent(c.id)}">사례 백과에서 보기 →</a></p>`);
 }
 
 // 조건의 과제 구분(track)·부처(ministry) 부분만 보고 지금 선택한 부처에 해당하는지

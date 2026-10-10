@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사례 백과 | POSTECH 연구비 집행 점검</title>
+<meta name="description" content="연구비 집행 사례(사례집·IRIS·한국연구재단·전문기관)를 인정·불인정·판단필요로 나눠 찾아보는 사례 백과입니다.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css?v=20261010e">
+</head>
+<body class="wiki">
+<header class="top">
+  <h1 class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>연구비 집행 점검</h1>
+  <nav class="gnb" aria-label="페이지">
+    <a href="./">집행 점검</a>
+    <a href="cases.html" aria-current="page">사례 백과</a>
+  </nav>
+  <p class="meta" id="meta">사례 불러오는 중</p>
+  <p class="notice">참고용 안내입니다. 최종 판단은 연구지원팀과 전문기관 기준을 따르세요.</p>
+</header>
+
+<main class="wboard">
+  <!-- 찾기·거르기 -->
+  <aside class="panel wfilter" aria-label="사례 거르기">
+    <label class="case-search"><span class="sr">사례 검색</span><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="찾을 말 (예: 노트북, 회의 다과)" autocomplete="off"></label>
+
+    <p class="wlbl">판정</p>
+    <div class="vchips" id="vChips"></div>
+
+    <p class="wlbl">출처</p>
+    <div class="schips" id="sChips"></div>
+
+    <div class="wrow">
+      <label class="field">부처
+        <select id="min"><option value="">모든 부처</option></select>
+      </label>
+      <label class="field">정렬
+        <select id="sort">
+          <option value="rel">관련도·공식자료 우선</option>
+          <option value="new">최신순</option>
+          <option value="old">오래된순</option>
+        </select>
+      </label>
+    </div>
+
+    <p class="wlbl">비목 목차 <button type="button" class="wreset" id="reset">조건 모두 지우기</button></p>
+    <ul class="toc" id="toc"></ul>
+  </aside>
+
+  <!-- 목록 -->
+  <section class="panel wlist" aria-label="사례 목록">
+    <div class="whead"><h2 id="listTitle">전체 사례</h2><span class="wcount" id="count"></span></div>
+    <ul class="entries" id="list"></ul>
+  </section>
+
+  <!-- 본문 -->
+  <article class="panel wdoc" id="doc" aria-live="polite">
+    <div class="wempty">
+      <p class="eyebrow">사례 백과</p>
+      <p class="lead">사례를 고르면 질의·답변 전문과 판정 이유를 보여 드려요.</p>
+      <p>사례집·혁신법 매뉴얼·IRIS·한국연구재단·전문기관 게시판의 공개 사례를 모두 검수해 <b>인정·불인정·판단필요·참고</b>로 나눴습니다. 왼쪽에서 판정이나 비목을 골라 훑어보거나, 찾을 말로 검색하세요.</p>
+    </div>
+  </article>
+</main>
+
+<script src="cases.js?v=20261010e"></script>
+</body>
+</html>
