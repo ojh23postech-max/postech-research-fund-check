@@ -6,17 +6,18 @@ const grams = (s) => { s = s.replace(/\s+/g, ""); const g = new Set(); for (let 
 const where = (doc, p) => (/산업기술혁신|운영요령/.test(doc) && !/POSTECH/.test(doc) ? `HWP 원문 ${p}구간` : `PDF ${p}쪽`);
 const VS = ["인정", "불인정", "판단필요", "참고"];
 const SRC = ["참고자료", "NRF", "IRIS", "전문기관"];
-const SRC_NAME = { 참고자료: "사례집·매뉴얼", NRF: "한국연구재단", IRIS: "IRIS", 전문기관: "전문기관" };
+const SRC_NAME = { 참고자료: "사례집·매뉴얼", NRF: "연구재단", IRIS: "IRIS", 전문기관: "전문기관" };
+// 부처 칩은 줄임말로 보여 주고 전체 이름은 풀이(title)로
+const MSHORT = { 과학기술정보통신부: "과기정통부", 교육부: "교육부", 산업통상부: "산업부", 농림축산식품부: "농식품부", 중소벤처기업부: "중기부", 기후에너지환경부: "기후에너지환경부", 보건복지부: "복지부", 국토교통부: "국토부" };
 const VDESC = { 인정: "집행할 수 있다고 본 사례", 불인정: "집행할 수 없거나 환수·제재된 사례", 판단필요: "조건·사실관계에 따라 달라지는 사례", 참고: "제도·절차 안내" };
 
-let C = [], st = { q: "", v: new Set(), s: new Set(), b: "", m: "", sort: "rel" }, hits = [], shown = 0, cur = null;
+let C = [], MS = [], st = { q: "", v: new Set(), s: new Set(), b: "", m: "", sort: "rel" }, hits = [], shown = 0, cur = null;
 
 fetch("data.json", { cache: "no-cache" }).then((r) => r.json()).then((d) => {
   C = d.cases.filter((c) => c.유형 !== "규정조항"); // 내규 조항은 빼고 사례만
   C.forEach((c) => { c.lt = c.제목.toLowerCase(); c.lb = (c.답변 + " " + c.비목 + " " + c.출처).toLowerCase(); c.g = grams(c.제목 + " " + c.답변.slice(0, 160)); });
   $("#meta").textContent = `사례 ${C.length.toLocaleString()}건 · 갱신 ${d.meta.기준일}`;
-  const ms = [...new Set(C.flatMap((c) => c.부처).filter((m) => m !== "공통"))].sort();
-  $("#min").insertAdjacentHTML("beforeend", ms.map((m) => `<option>${esc(m)}</option>`).join(""));
+  MS = [...new Set(C.flatMap((c) => c.부처).filter((m) => m !== "공통"))];
   fromHash();
   apply();
   addEventListener("hashchange", fromHash);
@@ -33,7 +34,7 @@ const terms = () => st.q.toLowerCase().split(/\s+/).filter(Boolean);
 // 판정·출처 외 조건으로 거른 결과(칩 숫자는 자기 조건을 뺀 나머지 조건 기준으로 셈)
 function base(skip) {
   const ws = terms();
-  let r = C.filter((c) => (!st.m || c.부처.includes(st.m) || c.부처.includes("공통")) && (skip === "b" || !st.b || c.비목 === st.b)
+  let r = C.filter((c) => (skip === "m" || !st.m || c.부처.includes(st.m) || c.부처.includes("공통")) && (skip === "b" || !st.b || c.비목 === st.b)
     && (skip === "v" || !st.v.size || st.v.has(c.판정)) && (skip === "s" || !st.s.size || st.s.has(c.출처구분)));
   if (ws.length) {
     const and = r.filter((c) => ws.every((w) => c.lt.includes(w) || c.lb.includes(w)));
@@ -56,6 +57,9 @@ function apply() {
     hits = hits.map((c) => [sc(c), c]).sort((a, b) => b[0] - a[0] || rk(a[1]) - rk(b[1]) || official(a[1]) - official(b[1]) || (b[1].일자 || "").localeCompare(a[1].일자 || "")).map(([, c]) => c);
   }
   // 칩·목차 숫자
+  const mb = base("m"), mc = Object.fromEntries(MS.map((m) => [m, mb.filter((c) => c.부처.includes(m) || c.부처.includes("공통")).length]));
+  $("#mChips").innerHTML = `<button type="button" data-m="" aria-pressed="${!st.m}">전체 <b>${mb.length.toLocaleString()}</b></button>` +
+    MS.sort((a, b) => mc[b] - mc[a]).map((m) => `<button type="button" data-m="${esc(m)}" aria-pressed="${st.m === m}" title="${esc(m)}">${esc(MSHORT[m] || m)} <b>${mc[m].toLocaleString()}</b></button>`).join("");
   const vc = count(base("v"), "판정"), sc = count(base("s"), "출처구분"), bc = count(base("b"), "비목");
   $("#vChips").innerHTML = VS.map((v) => `<button type="button" data-v="${v}" aria-pressed="${st.v.has(v)}" title="${VDESC[v]}">${tag(v)}<b>${(vc[v] || 0).toLocaleString()}</b></button>`).join("");
   $("#sChips").innerHTML = SRC.map((s) => `<button type="button" data-s="${s}" aria-pressed="${st.s.has(s)}">${SRC_NAME[s]} <b>${(sc[s] || 0).toLocaleString()}</b></button>`).join("");
@@ -112,9 +116,9 @@ $("#q").addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => 
 $("#vChips").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (!b) return; st.v.has(b.dataset.v) ? st.v.delete(b.dataset.v) : st.v.add(b.dataset.v); apply(); });
 $("#sChips").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (!b) return; st.s.has(b.dataset.s) ? st.s.delete(b.dataset.s) : st.s.add(b.dataset.s); apply(); });
 $("#toc").addEventListener("click", (e) => { const b = e.target.closest("[data-b]"); if (!b) return; st.b = b.dataset.b; apply(); });
-$("#min").addEventListener("change", () => { st.m = $("#min").value; apply(); });
+$("#mChips").addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (!b) return; st.m = st.m === b.dataset.m ? "" : b.dataset.m; apply(); });
 $("#sort").addEventListener("change", () => { st.sort = $("#sort").value; apply(); });
-$("#reset").addEventListener("click", () => { st = { q: "", v: new Set(), s: new Set(), b: "", m: "", sort: "rel" }; $("#q").value = ""; $("#min").value = ""; $("#sort").value = "rel"; apply(); });
+$("#reset").addEventListener("click", () => { st = { q: "", v: new Set(), s: new Set(), b: "", m: "", sort: "rel" }; $("#q").value = ""; $("#sort").value = "rel"; apply(); });
 $("#list").addEventListener("click", (e) => { if (e.target.id === "moreBtn") return more(); const b = e.target.closest("[data-id]"); if (b) open(C.find((c) => c.id === b.dataset.id)); });
 $("#doc").addEventListener("click", (e) => {
   const b = e.target.closest("[data-id]"); if (b) return open(C.find((c) => c.id === b.dataset.id));

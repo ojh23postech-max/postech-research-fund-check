@@ -248,7 +248,14 @@ dialog .x { position: absolute; top: .9rem; right: 1rem; width: 2.2rem; height: 
 .vchips button[aria-pressed="true"], .schips button[aria-pressed="true"] { border-color: var(--blue); background: #fff; color: var(--ink); }
 .vchips b, .schips b { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--ink); }
 .schips { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
-.wrow { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .3rem; }
+.mchips { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+.schips button { white-space: nowrap; }
+.mchips button { border: 2px solid transparent; background: var(--fill); border-radius: var(--r-sm); padding: .45rem .6rem; display: flex; justify-content: space-between; align-items: center; gap: .3rem; font-size: .84rem; color: var(--ink-2); transition: background .15s; white-space: nowrap; }
+.mchips button:hover { background: var(--fill-hover); }
+.mchips button[aria-pressed="true"] { border-color: var(--blue); background: #fff; color: var(--ink); }
+.mchips b { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--ink); }
+.whint { font-size: .74rem; font-weight: 500; color: var(--ink-3); }
+.wrow { display: grid; grid-template-columns: 1fr; gap: .5rem; margin-top: .3rem; }
 .toc { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
 .toc button { width: 100%; border: 0; background: none; text-align: left; display: flex; justify-content: space-between; gap: .5rem; padding: .38rem .55rem; border-radius: 8px; font-size: .84rem; color: var(--ink-2); }
 .toc button:hover { background: var(--fill); }
