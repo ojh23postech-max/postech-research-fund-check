@@ -6,7 +6,7 @@
 <title>연구비 집행 점검 | POSTECH</title>
 <meta name="description" content="국가R&D·산업부·POSTECH 규정으로 연구비 집행 적정성을 점검하고 관련 사례와 협약변경 필요 여부를 확인합니다.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261010b">
 </head>
 <body>
 <header class="top">
@@ -19,13 +19,15 @@
   <!-- 입력 -->
   <form class="panel input" id="form" autocomplete="off">
     <h2 class="sr">집행 정보 입력</h2>
-    <p class="step">과제 정보</p>
     <label class="field">소관 부처 (전문기관)
       <select id="track"></select>
     </label>
-    <p class="step">무엇을 집행하나요?</p>
-    <label class="field">집행 항목
-      <select id="itemSel"><option value="">목록에서 고르세요</option></select>
+    <div class="seg mode" role="radiogroup" aria-label="점검 종류">
+      <label><input type="radio" name="mode" value="spend" checked>집행 항목</label>
+      <label><input type="radio" name="mode" value="manage">정산·협약변경</label>
+    </div>
+    <label class="field"><span id="itemLbl">무엇을 집행하나요?</span>
+      <select id="itemSel"></select>
     </label>
     <label class="field">상세 내용 (적정 여부 확인)
       <input id="scopeQ" type="search" placeholder="예: 주류, 택시, 중고 장비, 소급" autocomplete="off">
@@ -100,6 +102,6 @@
 </main>
 
 <dialog id="dlg"><form method="dialog"><button class="x" aria-label="닫기">×</button></form><div id="dlgBody"></div></dialog>
-<script src="app.js"></script>
+<script src="app.js?v=20261010b"></script>
 </body>
 </html>

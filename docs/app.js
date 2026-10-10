@@ -2,6 +2,8 @@
 const $ = (s) => document.querySelector(s);
 const RANK = { 인정: 0, 판단필요: 1, 불인정: 2 };
 const LABEL = { 인정: "집행할 수 있어요", 판단필요: "확인이 필요해요", 불인정: "이대로는 집행할 수 없어요" };
+const LABEL_M = { 인정: "진행할 수 있어요", 판단필요: "확인이 필요해요", 불인정: "이대로는 진행할 수 없어요" }; // 정산·협약변경
+const lab = (v) => (rule?.구분 === "관리" ? LABEL_M : LABEL)[v];
 const ico = (d) => `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const SEAL = { 인정: ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>'), 판단필요: ico('<path d="M12 7v6"/><path d="M12 17h.01"/>'), 불인정: ico('<path d="M7 7l10 10M17 7L7 17"/>') };
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -42,7 +44,7 @@ const COMMON = [
 
 let D, rule = null, filter = null, page = 0, matched = [], lastV = null;
 
-fetch("data.json").then((r) => r.json()).then((d) => {
+fetch("data.json", { cache: "no-cache" }).then((r) => r.json()).then((d) => {
   D = d;
   D.cases.forEach((c) => (c.g = grams(c.제목 + " " + c.답변.slice(0, 160))));
   D.rules.forEach((r) => (r.g = grams(r.항목 + " " + r.keywords.join(" "))));
@@ -51,9 +53,7 @@ fetch("data.json").then((r) => r.json()).then((d) => {
     <optgroup label="정부 외"><option value="__private">산업체·POSCO·기타 민간과제</option><option value="__internal">교내 연구개발과제(교비)</option></optgroup>`;
   renderRegs();
   renderCases(null);
-  const groups = [...new Set(D.rules.map((r) => r.비목))];
-  $("#itemSel").insertAdjacentHTML("beforeend", groups.map((g) => `<optgroup label="${esc(g)}">${D.rules.filter((r) => r.비목 === g)
-    .map((r) => `<option value="${r.id}">${esc(r.항목)}</option>`).join("")}</optgroup>`).join(""));
+  fillItems();
   $("#quick").innerHTML = ["회의비(식비 포함)", "국외 출장비", "컴퓨터·프린터 등 범용 사무기기", "연구장비 구입·임차", "학생인건비 지급", "전문가 활용비(자문료·강사료·원고료)"]
     .map((n) => `<li><button type="button">${n}</button></li>`).join("");
   $("#spend").value = ymd(new Date());
@@ -103,7 +103,20 @@ function renderInputs() {
 }
 const shown = (id) => !$(id).closest(".field").hidden;
 
+// 점검 종류: 집행 항목(비목별 지출)과 정산·협약변경(이월·간접비 증액·예산 변경·책임자 변경·결제수단)을 나눠 목록 구성
+const modeOf = (r) => (r.구분 === "관리" ? "manage" : "spend");
+const curMode = () => document.querySelector('[name="mode"]:checked').value;
+function fillItems() {
+  const m = curMode(), rs = D.rules.filter((r) => modeOf(r) === m);
+  $("#itemLbl").textContent = m === "spend" ? "무엇을 집행하나요?" : "무엇을 확인하나요?";
+  $("#scopeQ").placeholder = m === "spend" ? "예: 주류, 택시, 중고 장비, 소급" : "예: 이자, 연구수당, 학생인건비, 파견";
+  $("#itemSel").innerHTML = `<option value="">목록에서 고르세요</option>` + [...new Set(rs.map((r) => r.비목))].map((g) => `<optgroup label="${esc(g)}">${rs.filter((r) => r.비목 === g)
+    .map((r) => `<option value="${r.id}">${esc(r.항목)}</option>`).join("")}</optgroup>`).join("");
+  $("#itemSel").value = rule && modeOf(rule) === m ? rule.id : "";
+}
+
 function setRule(r) {
+  if (r && modeOf(r) !== curMode()) { document.querySelector(`[name="mode"][value="${modeOf(r)}"]`).checked = true; fillItems(); }
   $("#itemSel").value = r ? r.id : "";
   if (r !== rule) {
     rule = r;
@@ -164,7 +177,7 @@ function run() {
   if (seal.dataset.v !== v) { seal.classList.remove("stamp"); void seal.offsetWidth; seal.classList.add("stamp"); }
   seal.dataset.v = v; $("#sealText").innerHTML = SEAL[v];
   $("#what").innerHTML = `<b>${esc(rule.항목)}</b> · ${esc(regLine(f.ministry))}`;
-  $("#vTitle").textContent = LABEL[v];
+  $("#vTitle").textContent = lab(v);
   $("#seal").setAttribute("aria-label", { 인정: "적정", 판단필요: "확인 필요", 불인정: "부적정" }[v]);
 
   // 근거 순서: 산업부는 공통 운영요령 → 혁신법, 그 외 국가R&D는 혁신법 → POSTECH, 민간은 POSTECH 먼저
@@ -284,9 +297,9 @@ function renderScope(q, list) {
   const why = rh ? `규정: ${rh.사유}` : cv ? `${dist} 기준 추정${sure ? "" : "(검수 안 된 자동분류 사례뿐이라 확정하지 않음)"}${soft ? ". 불인정 사례가 많으니 사례의 조건을 확인하세요" : ""}` : "규정·사례로 판단할 근거가 부족해요. 연구지원팀에 문의하세요.";
   const conflict = rh && rh.판정 !== "불인정" && w.불인정 ? ` (사례 중 불인정 있음)` : "";
   box.hidden = false; box.dataset.v = v || "참고";
-  box.innerHTML = `${v ? tag(v) : tag("참고")}<span class="txt"><b>${esc(v ? LABEL[v] : "판단 근거 부족")}</b> ${esc(why + conflict)}</span><button type="button" id="scopeMore">근거</button>`;
+  box.innerHTML = `${v ? tag(v) : tag("참고")}<span class="txt"><b>${esc(v ? lab(v) : "판단 근거 부족")}</b> ${esc(why + conflict)}</span><button type="button" id="scopeMore">근거</button>`;
   $("#scopeMore").onclick = () => openDlg(`<h3>‘${esc(q)}’ 적정 여부${rule ? ` · ${esc(rule.항목)}` : ""}</h3>
-    <p>${v ? tag(v) : tag("참고")} <b>${esc(v ? LABEL[v] : "판단 근거 부족")}</b></p>
+    <p>${v ? tag(v) : tag("참고")} <b>${esc(v ? lab(v) : "판단 근거 부족")}</b></p>
     ${rh ? `<p>${esc(rh.사유)}<br><small>${rh.근거.map(cite).map(esc).join(" / ")}</small></p>` : ""}
     <p>${esc(dist)}${W ? ` (검수·공식 사례는 2배, 자동분류는 1배로 계산)` : ""}${conflict}</p>
     <p class="why">${rh ? "고른 항목의 규정에 직접 해당하는 내용으로 판정했습니다." : "규정에 직접 해당하는 내용이 없어 검색된 사례 판정 분포로 추정했습니다. 오른쪽 사례 원문을 꼭 확인하세요."}${rule ? "" : " 왼쪽에서 집행 항목을 먼저 고르면 규정 기준으로도 판단합니다."}</p>`);
@@ -404,6 +417,7 @@ $("#form").addEventListener("input", (e) => {
   run();
 });
 $("#track").addEventListener("change", () => { renderQs(); renderRegs(); if (!rule) renderCases(null); });
+document.querySelectorAll('[name="mode"]').forEach((x) => x.addEventListener("change", () => { fillItems(); setRule(null); history.replaceState(null, "", location.pathname + location.search); }));
 $("#itemSel").addEventListener("change", () => { setRule(D.rules.find((r) => r.id === $("#itemSel").value) || null); });
 // 달력 버튼: 숨은 date 입력의 기본 달력을 열고, 고른 날짜를 글자 칸에 넣음
 $("#form").addEventListener("click", (e) => {

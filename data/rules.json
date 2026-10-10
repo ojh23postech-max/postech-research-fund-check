@@ -1,5 +1,5 @@
 {
- "_설명": "판정 규칙 DB. checks/agree의 when은 AND 조건 [필드, 연산자, 값]. 필드: track(national|motie|private), amount, people, perPerson, daysToEnd, 그 외 항목별 questions id(bool). 판정 우선순위: 불인정 > 판단필요 > 인정. 근거 쪽수는 data/text 추출본 기준.",
+ "_설명": "판정 규칙 DB. checks/agree의 when은 AND 조건 [필드, 연산자, 값]. 필드: track(national|motie|private), amount, people, perPerson, daysToEnd, 그 외 항목별 questions id(bool). 판정 우선순위: 불인정 > 판단필요 > 인정. 근거 쪽수는 data/text 추출본 기준. 구분: \"관리\"는 집행 항목이 아닌 정산·협약변경·과제관리 점검(화면에서 따로 고름).",
  "tracks": [
   {
    "id": "national",
@@ -3032,6 +3032,7 @@
   },
   {
    "id": "carryover",
+   "구분": "관리",
    "비목": "정산·사용실적",
    "항목": "연구비 이월·잔액·이자 사용",
    "keywords": [
@@ -3174,6 +3175,7 @@
   },
   {
    "id": "indirect",
+   "구분": "관리",
    "비목": "간접비",
    "항목": "간접비 증액·집행",
    "keywords": [
@@ -3346,6 +3348,7 @@
   },
   {
    "id": "pi",
+   "구분": "관리",
    "비목": "협약변경·과제관리",
    "항목": "연구책임자·기관·기간·목표 변경",
    "keywords": [
@@ -3627,6 +3630,7 @@
   },
   {
    "id": "budget",
+   "구분": "관리",
    "비목": "협약변경·과제관리",
    "항목": "비목 간 예산 변경(전용)",
    "keywords": [
@@ -3865,6 +3869,7 @@
   },
   {
    "id": "payment",
+   "구분": "관리",
    "비목": "일반·제도",
    "항목": "결제수단(개인카드·현금)",
    "keywords": [

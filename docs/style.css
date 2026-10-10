@@ -73,7 +73,7 @@ a:hover { text-decoration: underline; }
 .dt .pick { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 fieldset { border: 0; margin: 0; padding: 0; }
 legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; margin-bottom: .3rem; }
-.qs { flex: 1; min-height: 0; overflow: hidden; padding-top: .35rem; }
+.qs { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-top: .35rem; } /* 질문이 많아 넘치면 질문 칸 안에서만 스크롤(페이지는 고정) */
 .qs legend { font-size: .95rem; font-weight: 700; color: var(--ink); margin-bottom: .35rem; }
 .qs label { display: flex; gap: .6rem; align-items: center; padding: .5rem .65rem; margin-bottom: .3rem; font-size: .88rem; line-height: 1.35; cursor: pointer; border-radius: var(--r-sm); background: var(--fill); transition: background .15s; }
 .qs label:hover { background: var(--fill-hover); }
@@ -86,6 +86,8 @@ legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; ma
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(255, 255, 255, .7); border-radius: var(--r-sm); padding: 4px; }
 .seg label { text-align: center; padding: .45rem 0; font-size: .86rem; cursor: pointer; border-radius: 8px; color: var(--ink-2); font-weight: 500; }
 .seg input { position: absolute; opacity: 0; }
+.seg.mode { background: var(--fill); margin-top: .1rem; padding: 3px; }
+.seg.mode label { padding: .32rem 0; }
 .seg label:has(input:checked) { background: #fff; color: var(--blue); font-weight: 700; box-shadow: 0 1px 3px rgba(0, 23, 51, .12); }
 .seg label:has(input:focus-visible) { outline: 3px solid rgba(49, 130, 246, .45); }
 
@@ -165,11 +167,11 @@ legend { font-size: .8rem; font-weight: 500; color: var(--ink-2); padding: 0; ma
 .case-search:focus-within { background: #fff; border-color: var(--blue); color: var(--blue); }
 .case-search input { flex: 1; min-width: 0; height: 2.4rem; border: 0; background: none; outline: none; font-size: .9rem; color: var(--ink); }
 .case-search input::placeholder { color: var(--ink-3); }
-.scope { display: flex; align-items: center; gap: .45rem; padding: .45rem .6rem; margin: -.2rem 0 .1rem; border-radius: var(--r-sm); background: var(--fill); border-left: 4px solid var(--ink-3); font-size: .85rem; min-width: 0; }
+.scope { display: flex; align-items: center; gap: .45rem; padding: .35rem .5rem; margin: -.2rem 0 .1rem; border-radius: var(--r-sm); background: var(--fill); border-left: 4px solid var(--ink-3); font-size: .85rem; min-width: 0; }
 .scope[data-v="인정"] { border-left-color: var(--ok); }
 .scope[data-v="불인정"] { border-left-color: var(--bad); }
 .scope[data-v="판단필요"] { border-left-color: var(--warn); }
-.scope .txt { flex: 1; min-width: 0; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
+.scope .txt { flex: 1; min-width: 0; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
 .scope .txt b { color: var(--ink); }
 .scope .tag { flex: none; }
 .scope button { flex: none; border: 0; background: #fff; border-radius: 999px; padding: .2rem .7rem; font-size: .8rem; color: var(--blue); font-weight: 600; cursor: pointer; }
