@@ -258,15 +258,18 @@ function drawCards() {
   const pages = Math.max(1, Math.ceil(list.length / per));
   page = Math.min(page, pages - 1);
   box.innerHTML = list.length ? list.slice(page * per, page * per + per).map((c) => `<li><button type="button" data-id="${c.id}">
-      <span class="line">${tag(c.판정)}<span class="src-tag">${esc(c.출처구분 === "참고자료" ? c.출처.replace(/\(.*\)/, "") : c.출처구분)}</span>${c.자동 ? `<span class="src-tag auto" title="키워드로 자동 분류된 게시판 글입니다. 원문 답변을 꼭 확인하세요.">자동분류</span>` : ""}<span class="w">${c.원문URL ? "" : where(c.출처, c.쪽)}</span></span>
+      <span class="line">${tag(c.판정)}<span class="src-tag">${esc(c.출처구분 === "참고자료" ? c.출처.replace(/\(.*\)/, "") : c.출처구분)}</span>${c.자동 ? `<span class="src-tag auto" title="키워드로 자동 분류된 게시판 글입니다. 원문 답변을 꼭 확인하세요.">자동분류</span>` : ""}<span class="w">${[c.원문URL ? "" : where(c.출처, c.쪽), c.일자 || ""].filter(Boolean).join(" · ")}</span></span>
       <span class="t" title="${esc(c.제목)}">${esc(c.제목)}</span><span class="w">${esc(c.비목)} · ${esc(c.판정근거)}</span></button></li>`).join("")
     : `<li class="nothing">${$("#caseQ").value.trim() ? "검색어에 맞는 사례가 없어요. 다른 말로 찾아보세요." : rule ? "조건에 맞는 사례가 없습니다." : "항목을 고르거나 위 검색창에 찾을 말을 입력하세요."}</li>`;
   $("#pageInfo").textContent = `${list.length ? page + 1 : 0} / ${list.length ? pages : 0}`;
   $("#prev").disabled = page === 0; $("#next").disabled = page >= pages - 1;
 }
 
+// 글 시점: 게시판은 작성일·답변일, 참고자료는 발간 시점
+const when = (c) => c.일자 ? ` · ${c.원문URL ? `작성 ${c.일자}${c.답변일 ? ` · 답변 ${c.답변일}` : ""}` : esc(c.일자)}` : (c.원문URL ? " · 작성일 미표기" : "");
+
 function showCase(c) {
-  openDlg(`<p>${tag(c.판정)} <span class="src-tag">${esc(c.출처)}</span> <span class="w">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기</a>` : `${where(c.출처, c.쪽)} · ${esc(c.유형)}`}</span></p>
+  openDlg(`<p>${tag(c.판정)} <span class="src-tag">${esc(c.출처)}</span> <span class="w">${c.원문URL ? `<a href="${esc(c.원문URL)}" target="_blank" rel="noopener">원문 보기</a>` : `${where(c.출처, c.쪽)} · ${esc(c.유형)}`}${when(c)}</span></p>
     <h3>${esc(c.제목)}</h3><div class="body">${esc(c.답변)}</div>
     <p class="why">${c.자동 ? `자동 분류(키워드 “${esc(c.판정근거)}” 기준)입니다. 원문 답변으로 판단하세요.` : `${esc(c.판정근거.replace(/^검수: /, "판정 이유: "))}`}<br>판정이 원문과 다르면 연구지원팀에 알려 주세요.</p>`);
 }
