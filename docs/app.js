@@ -61,7 +61,7 @@ fetch("data.json").then((r) => r.json()).then((d) => {
 });
 function fromHash() {
   const r = D.rules.find((r) => r.id === decodeURIComponent(location.hash.slice(1)));
-  if (r && r !== rule) { $("#item").value = ""; setRule(r); }
+  if (r && r !== rule) setRule(r);
 }
 addEventListener("hashchange", fromHash);
 
@@ -88,12 +88,6 @@ function renderQs() {
   $("#qs").innerHTML = "<legend>해당하면 체크</legend>" + (rule
     ? qs.map((q) => `<label><input type="checkbox" data-q="${q.id}"${on.has(q.id) ? " checked" : ""}>${esc(q.label)}</label>`).join("") || `<p class="none">이 과제 구분에서는 추가로 확인할 사항이 없어요.</p>`
     : `<p class="none">항목을 고르면 확인할 질문이 나옵니다.</p>`);
-}
-
-// 키워드 입력 → 가장 가까운 항목을 목록에서도 선택
-function pick() {
-  const q = $("#item").value.trim();
-  setRule(q ? findRule(q) : D.rules.find((r) => r.id === $("#itemSel").value) || null);
 }
 
 // 입력칸: 항목마다 판정에 필요한 정보만 해당 항목의 이름으로 보여 줌(항목 미선택 시 기본 4칸)
@@ -157,7 +151,6 @@ function run() {
   $("#agreeBox").hidden = !rule || !rule.agree.some((a) => hit(a.when, fields()));
   if (!rule) {
     $("#empty").hidden = false; $("#verdict").hidden = true;
-    if ($("#item").value.trim()) $("#empty .lead").textContent = "일치하는 항목이 없습니다. 목록에서 고르거나 다른 말로 입력하세요.";
     return renderCases(null);
   }
   const f = fields();
@@ -217,7 +210,7 @@ function caseFits(c) {
 // 사례: 규칙 비목·키워드와 입력어로 관련도 계산
 function renderCases(v = lastV) {
   lastV = v;
-  const q = $("#item").value.trim() || rule?.항목 || "";
+  const q = rule?.항목 || "";
   if (!D) return;
   const g = grams(q + " " + (rule ? rule.keywords.join(" ") : ""));
   // 참고자료(공식 문서) 우선, 그 안에서 관련도 순
@@ -230,10 +223,12 @@ function renderCases(v = lastV) {
   }).filter(([s]) => s >= 6).sort((a, b) => (a[1].판정 === "참고") - (b[1].판정 === "참고") || (b[1].출처구분 === "참고자료") - (a[1].출처구분 === "참고자료") || b[0] - a[0]).map(([, c]) => c) : [];
   // 항목과 관련된 사례(판정 요약용) → 사례 검색어로 한 번 더 거름. 항목이 없으면 전체 사례에서 검색
   const base = matched, cntOf = (l) => { const n = { 인정: 0, 불인정: 0, 판단필요: 0, 참고: 0 }; l.forEach((c) => n[c.판정]++); return n; };
-  const terms = $("#caseQ").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const words = (s) => s.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const has = (c, ws) => { const t = (c.제목 + " " + c.답변 + " " + c.비목 + " " + c.출처).toLowerCase(); return ws.every((w) => t.includes(w)); };
+  const sq = $("#scopeQ").value.trim(), terms = [...words(sq), ...words($("#caseQ").value)];
   if (terms.length) {
     const pool = base.length ? base : D.cases.filter(caseFits);
-    matched = pool.filter((c) => { const t = (c.제목 + " " + c.답변 + " " + c.비목 + " " + c.출처).toLowerCase(); return terms.every((w) => t.includes(w)); });
+    matched = pool.filter((c) => has(c, terms));
     if (!base.length) matched.sort((a, b) => (a.판정 === "참고") - (b.판정 === "참고") || (b.출처구분 === "참고자료") - (a.출처구분 === "참고자료"));
   }
   const cnt = cntOf(matched), baseCnt = cntOf(base);
@@ -245,7 +240,53 @@ function renderCases(v = lastV) {
       ? `<span class="pill">비슷한 사례 <b>${base.length}</b></span>${["인정", "불인정", "판단필요", "참고"].map((k) => `<span class="pill" data-v="${k}">${k} <b>${baseCnt[k]}</b></span>`).join("")}${v === "인정" && baseCnt.불인정 ? `<span class="warn-note">불인정 사례가 있어요. 조건을 한 번 더 확인하세요.</span>` : ""}`
       : `<span class="pill">비슷한 사례를 찾지 못했어요</span>`;
   }
+  renderScope(sq, sq ? (base.length ? base : D.cases.filter(caseFits)).filter((c) => has(c, words(sq))) : []);
   page = 0; drawCards();
+}
+
+// 검색어(상세 범위) 적정 여부: ① 고른 항목의 체크 질문에 걸리면 그 규정 판정 ② 아니면 검색된 사례의 판정 분포(검수·공식 사례 2배 가중)
+function scopeVerdict(q, list) {
+  let rh = null;
+  if (rule) {
+    const f = fields(), qg = grams(q);
+    // 질문 본문만 비교(괄호 속 보충 설명은 반대 뜻이 섞여 오판정 위험), "없이·아닌" 같은 부정형 질문은 제외
+    const qs = rule.questions.filter((x) => {
+      const lab = x.label.replace(/\(.*?\)/g, "");
+      if (/없이|아닌|않|없는/.test(lab)) return false;
+      const lg = grams(lab); let n = 0; qg.forEach((g) => lg.has(g) && n++);
+      return qg.size && n >= Math.max(1, Math.ceil(qg.size * 0.6));
+    });
+    const hs = qs.flatMap((x) => rule.checks.filter((c) => c.when.some(([k]) => k === x.id) && hit(c.when, { ...f, [x.id]: true })).map((c) => ({ ...c, qid: x.id })));
+    if (hs.length) rh = hs.reduce((m, c) => (RANK[c.판정] > RANK[m.판정] ? c : m));
+  }
+  const w = { 인정: 0, 불인정: 0, 판단필요: 0 };
+  list.forEach((c) => c.판정 in w && (w[c.판정] += c.자동 ? 1 : 2));
+  const W = w.인정 + w.불인정 + w.판단필요;
+  // 검수되지 않은 자동분류 사례뿐이면 단정하지 않음
+  const sure = list.some((c) => !c.자동 && c.판정 !== "참고");
+  const cv = !W ? null : !sure ? "판단필요" : w.불인정 / W >= 0.5 ? "불인정" : w.인정 / W >= 0.6 && !w.불인정 ? "인정" : "판단필요";
+  return { rh, cv, w, W, sure };
+}
+
+function renderScope(q, list) {
+  const box = $("#scope");
+  if (!q) { box.hidden = true; return; }
+  const { rh, cv, w, W, sure } = scopeVerdict(q, list);
+  // 상세 내용이 체크 질문에 해당하면 그 질문도 체크해 가운데 판정과 맞춤
+  const cb = rh && $(`[data-q="${rh.qid}"]`);
+  if (cb && !cb.checked) { cb.checked = true; setTimeout(run); }
+  const v = rh ? rh.판정 : cv;
+  const n = list.filter((c) => c.판정 !== "참고").length;
+  const dist = W ? `사례 ${n}건: 인정 ${list.filter((c) => c.판정 === "인정").length} · 불인정 ${list.filter((c) => c.판정 === "불인정").length} · 판단필요 ${list.filter((c) => c.판정 === "판단필요").length}` : "판정이 담긴 사례 없음";
+  const why = rh ? `규정: ${rh.사유}` : cv ? `${dist} 기준 추정${sure ? "" : "(검수 안 된 자동분류 사례뿐이라 확정하지 않음)"}` : "규정·사례로 판단할 근거가 부족해요. 연구지원팀에 문의하세요.";
+  const conflict = rh && cv && cv !== rh.판정 && w.불인정 ? ` (사례 중 불인정 있음)` : "";
+  box.hidden = false; box.dataset.v = v || "참고";
+  box.innerHTML = `${v ? tag(v) : tag("참고")}<span class="txt"><b>${esc(v ? LABEL[v] : "판단 근거 부족")}</b> ${esc(why + conflict)}</span><button type="button" id="scopeMore">근거</button>`;
+  $("#scopeMore").onclick = () => openDlg(`<h3>‘${esc(q)}’ 적정 여부${rule ? ` · ${esc(rule.항목)}` : ""}</h3>
+    <p>${v ? tag(v) : tag("참고")} <b>${esc(v ? LABEL[v] : "판단 근거 부족")}</b></p>
+    ${rh ? `<p>${esc(rh.사유)}<br><small>${rh.근거.map(cite).map(esc).join(" / ")}</small></p>` : ""}
+    <p>${esc(dist)}${W ? ` (검수·공식 사례는 2배, 자동분류는 1배로 계산)` : ""}${conflict}</p>
+    <p class="why">${rh ? "고른 항목의 규정에 직접 해당하는 내용으로 판정했습니다." : "규정에 직접 해당하는 내용이 없어 검색된 사례 판정 분포로 추정했습니다. 오른쪽 사례 원문을 꼭 확인하세요."}${rule ? "" : " 왼쪽에서 집행 항목을 먼저 고르면 규정 기준으로도 판단합니다."}</p>`);
 }
 
 function drawCards() {
@@ -356,11 +397,11 @@ $("#form").addEventListener("input", (e) => {
     const d = e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
     e.target.value = d ? Number(d).toLocaleString("ko-KR") : "";
   }
-  if (e.target.id === "item") return pick();
+  if (e.target.id === "scopeQ") filter = null;
   run();
 });
 $("#track").addEventListener("change", () => { renderQs(); renderRegs(); if (!rule) renderCases(null); });
-$("#itemSel").addEventListener("change", () => { $("#item").value = ""; setRule(D.rules.find((r) => r.id === $("#itemSel").value) || null); });
+$("#itemSel").addEventListener("change", () => { setRule(D.rules.find((r) => r.id === $("#itemSel").value) || null); });
 // 달력 버튼: 숨은 date 입력의 기본 달력을 열고, 고른 날짜를 글자 칸에 넣음
 $("#form").addEventListener("click", (e) => {
   const b = e.target.closest(".cal"); if (!b) return;
@@ -370,7 +411,7 @@ $("#form").addEventListener("click", (e) => {
   try { pick.showPicker(); } catch { text.focus(); }
 });
 $("#form").addEventListener("submit", (e) => e.preventDefault());
-$("#quick").addEventListener("click", (e) => { if (e.target.tagName === "BUTTON") { $("#item").value = ""; setRule(findRule(e.target.textContent)); } });
+$("#quick").addEventListener("click", (e) => { if (e.target.tagName === "BUTTON") setRule(findRule(e.target.textContent)); });
 $("#caseQ").addEventListener("input", () => { filter = null; renderCases(); });
 $("#dist").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (!b) return; filter = filter === b.dataset.f ? null : b.dataset.f; renderCases(); });
 $("#cards").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) showCase(D.cases.find((c) => c.id === b.dataset.id)); });

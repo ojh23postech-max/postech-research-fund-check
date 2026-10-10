@@ -27,9 +27,10 @@
     <label class="field">집행 항목
       <select id="itemSel"><option value="">목록에서 고르세요</option></select>
     </label>
-    <label class="field">또는 키워드로 찾기
-      <input id="item" type="search" placeholder="예: 노트북, 해외출장, 자문료">
+    <label class="field">상세 내용 (적정 여부 확인)
+      <input id="scopeQ" type="search" placeholder="예: 주류, 택시, 중고 장비, 소급" autocomplete="off">
     </label>
+    <div class="scope" id="scope" hidden aria-live="polite"></div>
     <div class="row">
       <label class="field">금액(원)<input id="amount" inputmode="numeric" autocomplete="off" placeholder="예: 300,000"></label>
       <label class="field">인원<input id="people" type="number" min="1" inputmode="numeric"></label>
@@ -87,7 +88,7 @@
       <button role="tab" aria-selected="false" data-tab="law">근거 원문</button>
     </div>
     <div class="tabpanel" id="pCases">
-      <label class="case-search"><span class="sr">사례 검색</span><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="caseQ" type="search" placeholder="사례에서 찾기 (예: 회의록, 해외 학회, 소급)" autocomplete="off"></label>
+      <label class="case-search"><span class="sr">사례 검색</span><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="caseQ" type="search" placeholder="사례에서 더 찾기 (예: 회의록, 해외 학회)" autocomplete="off"></label>
       <div class="dist" id="dist"></div>
       <ul class="cards" id="cards"></ul>
       <nav class="pager" id="pager"><button type="button" id="prev" aria-label="이전 사례">‹</button><span id="pageInfo"></span><button type="button" id="next" aria-label="다음 사례">›</button></nav>
