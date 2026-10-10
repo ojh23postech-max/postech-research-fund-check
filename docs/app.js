@@ -264,22 +264,25 @@ function scopeVerdict(q, list) {
   const W = w.인정 + w.불인정 + w.판단필요;
   // 검수되지 않은 자동분류 사례뿐이면 단정하지 않음
   const sure = list.some((c) => !c.자동 && c.판정 !== "참고");
-  const cv = !W ? null : !sure ? "판단필요" : w.불인정 / W >= 0.5 ? "불인정" : w.인정 / W >= 0.6 && !w.불인정 ? "인정" : "판단필요";
-  return { rh, cv, w, W, sure };
+  let cv = !W ? null : !sure ? "판단필요" : w.불인정 / W >= 0.5 ? "불인정" : w.인정 / W >= 0.6 && !w.불인정 ? "인정" : "판단필요";
+  // 항목을 고른 상태에서 규정에 직접 걸리지 않으면, 사례의 불인정은 다른 조건(참석자 구성 등) 때문일 수 있어 단정하지 않음
+  const soft = rule && cv === "불인정";
+  if (soft) cv = "판단필요";
+  return { rh, cv, w, W, sure, soft };
 }
 
 function renderScope(q, list) {
   const box = $("#scope");
   if (!q) { box.hidden = true; return; }
-  const { rh, cv, w, W, sure } = scopeVerdict(q, list);
+  const { rh, cv, w, W, sure, soft } = scopeVerdict(q, list);
   // 상세 내용이 체크 질문에 해당하면 그 질문도 체크해 가운데 판정과 맞춤
   const cb = rh && $(`[data-q="${rh.qid}"]`);
   if (cb && !cb.checked) { cb.checked = true; setTimeout(run); }
   const v = rh ? rh.판정 : cv;
   const n = list.filter((c) => c.판정 !== "참고").length;
   const dist = W ? `사례 ${n}건: 인정 ${list.filter((c) => c.판정 === "인정").length} · 불인정 ${list.filter((c) => c.판정 === "불인정").length} · 판단필요 ${list.filter((c) => c.판정 === "판단필요").length}` : "판정이 담긴 사례 없음";
-  const why = rh ? `규정: ${rh.사유}` : cv ? `${dist} 기준 추정${sure ? "" : "(검수 안 된 자동분류 사례뿐이라 확정하지 않음)"}` : "규정·사례로 판단할 근거가 부족해요. 연구지원팀에 문의하세요.";
-  const conflict = rh && cv && cv !== rh.판정 && w.불인정 ? ` (사례 중 불인정 있음)` : "";
+  const why = rh ? `규정: ${rh.사유}` : cv ? `${dist} 기준 추정${sure ? "" : "(검수 안 된 자동분류 사례뿐이라 확정하지 않음)"}${soft ? ". 불인정 사례가 많으니 사례의 조건을 확인하세요" : ""}` : "규정·사례로 판단할 근거가 부족해요. 연구지원팀에 문의하세요.";
+  const conflict = rh && rh.판정 !== "불인정" && w.불인정 ? ` (사례 중 불인정 있음)` : "";
   box.hidden = false; box.dataset.v = v || "참고";
   box.innerHTML = `${v ? tag(v) : tag("참고")}<span class="txt"><b>${esc(v ? LABEL[v] : "판단 근거 부족")}</b> ${esc(why + conflict)}</span><button type="button" id="scopeMore">근거</button>`;
   $("#scopeMore").onclick = () => openDlg(`<h3>‘${esc(q)}’ 적정 여부${rule ? ` · ${esc(rule.항목)}` : ""}</h3>
