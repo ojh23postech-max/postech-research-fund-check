@@ -119,7 +119,7 @@ function setRule(r) {
   if (r && modeOf(r) !== curMode()) { document.querySelector(`[name="mode"][value="${modeOf(r)}"]`).checked = true; fillItems(); }
   $("#itemSel").value = r ? r.id : "";
   if (r !== rule) {
-    rule = r;
+    rule = r; autoQ = null;
     renderInputs();
     renderQs();
     if (r) history.replaceState(null, "", "#" + r.id);
@@ -257,17 +257,25 @@ function renderCases(v = lastV) {
   page = 0; drawCards();
 }
 
+// 낱말별 2글자 조합(한글·영문만, 숫자·기호 제외)과 숫자 토큰
+const wordGrams = (t) => { const g = new Set(); t.replace(/[^가-힣a-zA-Z\s]/g, " ").split(/\s+/).forEach((w) => grams(w).forEach((x) => g.add(x))); return g; };
+const nums = (t) => t.match(/\d+(?:[.,]\d+)*%?/g) || [];
+let autoQ = null; // 상세 내용 때문에 자동으로 체크한 질문
+
 // 검색어(상세 범위) 적정 여부: ① 고른 항목의 체크 질문에 걸리면 그 규정 판정 ② 아니면 검색된 사례의 판정 분포(검수·공식 사례 2배 가중)
 function scopeVerdict(q, list) {
   let rh = null;
   if (rule) {
-    const f = fields(), qg = grams(q);
+    const f = fields(), qg = wordGrams(q), qn = nums(q);
     // 질문 본문만 비교(괄호 속 보충 설명은 반대 뜻이 섞여 오판정 위험), "없이·아닌" 같은 부정형 질문은 제외
-    const qs = rule.questions.filter((x) => {
+    // 글자(한글·영문) 조합이 있어야 하고, 숫자는 통째로 같아야 함("0%"가 "70%"에 걸리지 않게)
+    const qs = !qg.size ? [] : rule.questions.filter((x) => {
       const lab = x.label.replace(/\(.*?\)/g, "");
       if (/없이|아닌|않|없는/.test(lab)) return false;
-      const lg = grams(lab); let n = 0; qg.forEach((g) => lg.has(g) && n++);
-      return qg.size && n >= Math.max(1, Math.ceil(qg.size * 0.6));
+      const ln = nums(lab);
+      if (qn.some((v) => !ln.includes(v))) return false;
+      const lg = wordGrams(lab); let n = 0; qg.forEach((g) => lg.has(g) && n++);
+      return n >= Math.max(1, Math.ceil(qg.size * 0.6));
     });
     const hs = qs.flatMap((x) => rule.checks.filter((c) => c.when.some(([k]) => k === x.id) && hit(c.when, { ...f, [x.id]: true })).map((c) => ({ ...c, qid: x.id })));
     if (hs.length) rh = hs.reduce((m, c) => (RANK[c.판정] > RANK[m.판정] ? c : m));
@@ -286,11 +294,13 @@ function scopeVerdict(q, list) {
 
 function renderScope(q, list) {
   const box = $("#scope");
-  if (!q) { box.hidden = true; return; }
-  const { rh, cv, w, W, sure, soft } = scopeVerdict(q, list);
+  const { rh, cv, w, W, sure, soft } = q ? scopeVerdict(q, list) : {};
   // 상세 내용이 체크 질문에 해당하면 그 질문도 체크해 가운데 판정과 맞춤
+  // 상세 내용이 바뀌어 더는 해당하지 않으면 자동으로 켠 체크는 다시 끔
+  if (autoQ && autoQ !== rh?.qid) { const old = $(`[data-q="${autoQ}"]`); autoQ = null; if (old?.checked) { old.checked = false; setTimeout(run); } }
   const cb = rh && $(`[data-q="${rh.qid}"]`);
-  if (cb && !cb.checked) { cb.checked = true; setTimeout(run); }
+  if (cb && !cb.checked) { cb.checked = true; autoQ = rh.qid; setTimeout(run); }
+  if (!q) { box.hidden = true; return; }
   const v = rh ? rh.판정 : cv;
   const n = list.filter((c) => c.판정 !== "참고").length;
   const dist = W ? `사례 ${n}건: 인정 ${list.filter((c) => c.판정 === "인정").length} · 불인정 ${list.filter((c) => c.판정 === "불인정").length} · 판단필요 ${list.filter((c) => c.판정 === "판단필요").length}` : "판정이 담긴 사례 없음";
